@@ -3,283 +3,234 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEXOVA · Organizador Fotográfico de Inventarios</title>
-<meta name="description" content="Organiza automáticamente las fotos de un inventario de activos fijos por familia y subfamilia. Procesamiento 100% local.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>NEXOVA · Organizador de Fotos</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{
-  --teal:#0F766E; --teal-claro:#0D9488; --teal-bg:#F0FDFA;
-  --slate:#1E293B; --slate-950:#0F172A; --slate-700:#475569; --slate-600:#64748B;
-  --gris-400:#94A3B8; --gris-300:#CBD5E1; --gris-200:#E2E8F0; --gris-100:#F1F5F9;
-  --fondo:#F4F6F8; --blanco:#FFF;
-  --ambar:#D97706; --ambar-bg:#FEF3C7; --rojo:#B91C1C; --rojo-bg:#FEE2E2;
-  --sombra:0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
-  /* Fallbacks reales: si TI bloquea Google Fonts, esto sigue viéndose bien */
-  --sora:'Sora', system-ui, 'Segoe UI', sans-serif;
-  --dm:'DM Sans', system-ui, 'Segoe UI', sans-serif;
-}
+:root{--teal:#0F766E;--teal-h:#0D9488;--teal-bg:#F0FDFA;--slate:#1E293B;--slate-950:#0F172A;--gris:#94A3B8;--gris-200:#E2E8F0;--gris-100:#F1F5F9;--fondo:#F4F6F8;--blanco:#fff;--ambar:#D97706;--ambar-bg:#FEF3C7;--rojo:#B91C1C;--rojo-bg:#FEE2E2;--verde:#059669}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--dm);background:var(--fondo);color:var(--slate);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
-h1,h2,h3,.num{font-family:var(--sora)}
-
-/* ---------- Cabecera ---------- */
-header{background:var(--slate);border-bottom:3px solid var(--teal)}
-.barra{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:14px}
-.hex{width:26px;height:29px;background:var(--teal);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);flex-shrink:0}
-.marca{font-family:var(--sora);font-weight:800;font-size:19px;color:#fff;letter-spacing:.12em}
-.tagline{font-size:11px;color:var(--teal-claro);letter-spacing:.06em;border-left:1px solid #334155;padding-left:14px}
-.ver{margin-left:auto;font-size:11px;color:var(--gris-400)}
-
-/* ---------- Privacidad ---------- */
-.privacidad{background:var(--teal-bg);border-bottom:1px solid #CCFBF1}
-.privacidad div{max-width:1180px;margin:0 auto;padding:9px 24px;font-size:12.5px;color:#115E59;display:flex;align-items:center;gap:8px}
-.privacidad b{font-weight:700}
-
-main{max-width:1180px;margin:0 auto;padding:24px 24px 140px}
-
-/* ---------- Tarjetas ---------- */
-.paso{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:20px 22px;margin-bottom:14px;box-shadow:var(--sombra)}
-.paso.off{opacity:.45;pointer-events:none}
-.cab{display:flex;align-items:center;gap:11px;margin-bottom:4px}
-.n{width:24px;height:24px;border-radius:6px;background:var(--teal);color:#fff;font-family:var(--sora);font-weight:700;font-size:12px;display:grid;place-items:center;flex-shrink:0}
-.paso h2{font-size:14.5px;font-weight:700;color:var(--slate)}
-.ayuda{font-size:12px;color:var(--gris-400);margin:0 0 16px 35px}
-
-/* ---------- Formulario ---------- */
-.rejilla{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
-.campo{display:flex;flex-direction:column;gap:5px}
-.campo label{font-size:11px;font-weight:700;color:var(--slate-700);letter-spacing:.02em}
-.campo label .req{color:var(--teal)}
-select,input[type=text],input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--gris-300);border-radius:6px;background:#fff;font-family:var(--dm);font-size:13px;color:var(--slate)}
-select:focus,input:focus{outline:2px solid var(--teal);outline-offset:-1px;border-color:var(--teal)}
-select:disabled{background:var(--gris-100);color:var(--gris-400)}
-
-.zona{border:2px dashed var(--gris-300);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:.15s;background:#FCFDFE}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--fondo);color:var(--slate);min-height:100vh;-webkit-font-smoothing:antialiased}
+header{background:var(--slate);border-bottom:3px solid var(--teal);padding:0 24px}
+.hbar{max-width:860px;margin:0 auto;height:56px;display:flex;align-items:center;gap:12px}
+.hex{width:22px;height:25px;background:var(--teal);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);flex-shrink:0}
+.marca{font-family:'Sora',sans-serif;font-weight:800;font-size:17px;color:#fff;letter-spacing:.12em}
+.sub{font-size:11px;color:#0D9488;letter-spacing:.05em;border-left:1px solid #334155;padding-left:12px}
+.priv{font-size:11px;color:var(--gris);margin-left:auto}
+main{max-width:860px;margin:0 auto;padding:32px 24px 120px}
+.wiz{display:flex;align-items:center;margin-bottom:32px}
+.wstep{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--gris);transition:.2s}
+.wstep.activo{color:var(--teal)}.wstep.listo{color:var(--verde)}
+.wnum{width:26px;height:26px;border-radius:50%;border:2px solid currentColor;display:grid;place-items:center;font-size:11px;font-weight:800;flex-shrink:0}
+.wstep.activo .wnum{background:var(--teal);color:#fff;border-color:var(--teal)}
+.wstep.listo .wnum{background:var(--verde);color:#fff;border-color:var(--verde)}
+.wline{flex:1;height:2px;background:var(--gris-200);margin:0 8px}.wline.ok{background:var(--verde)}
+.pantalla{display:none}.pantalla.visible{display:block}
+.card{background:var(--blanco);border:1px solid var(--gris-200);border-radius:14px;padding:28px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.card h2{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px}
+.card p{font-size:13.5px;color:#64748B;margin-bottom:24px;line-height:1.5}
+.zona{border:2px dashed var(--gris-200);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:.15s;background:#FAFBFC}
 .zona:hover{border-color:var(--teal);background:var(--teal-bg)}
-.zona.lista{border-style:solid;border-color:var(--teal);background:var(--teal-bg);text-align:left;display:flex;align-items:center;gap:10px}
-.zona .t{font-weight:700;font-size:13px;color:var(--slate)}
-.zona .s{font-size:11.5px;color:var(--slate-600);word-break:break-all}
-.zona .ic{font-size:19px;line-height:1}
-
-.check{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none;color:var(--slate-700)}
-.check input{width:15px;height:15px;accent-color:var(--teal);cursor:pointer}
-.opciones{display:flex;gap:8px;flex-wrap:wrap}
-.op{border:1px solid var(--gris-300);border-radius:7px;padding:9px 13px;cursor:pointer;font-size:12.5px;background:#fff;transition:.12s;line-height:1.35}
-.op:hover{border-color:var(--teal-claro)}
-.op.sel{border-color:var(--teal);background:var(--teal-bg);box-shadow:inset 0 0 0 1px var(--teal)}
-.op b{display:block;font-weight:700;color:var(--slate);font-size:13px}
-.op span{color:var(--slate-600);font-size:11px}
-
-/* ---------- Barra de acciones ---------- */
-.acciones{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-top:1px solid var(--gris-200);box-shadow:0 -4px 20px rgba(15,23,42,.06);z-index:40}
-.acciones>div{max-width:1180px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:12px}
-.estado{flex:1;font-size:12.5px;color:var(--slate-600);min-width:0}
-.estado b{color:var(--slate);font-weight:700}
-.progreso{height:5px;background:var(--gris-200);border-radius:3px;overflow:hidden;margin-top:5px;max-width:460px}
-.progreso i{display:block;height:100%;width:0;background:var(--teal);border-radius:3px;transition:width .2s}
-button{font-family:var(--sora);font-weight:600;font-size:13.5px;padding:11px 20px;border-radius:8px;border:none;cursor:pointer;transition:.14s;white-space:nowrap}
-button:disabled{opacity:.42;cursor:not-allowed}
-.b1{background:#fff;color:var(--teal);border:1.5px solid var(--teal)}
-.b1:hover:not(:disabled){background:var(--teal-bg)}
-.b2{background:var(--teal);color:#fff}
-.b2:hover:not(:disabled){background:var(--teal-claro)}
-.b3{background:var(--slate);color:#fff;font-size:12.5px;padding:9px 15px}
-.b3:hover:not(:disabled){background:var(--slate-950)}
-
-/* ---------- Resultados ---------- */
-#resultados{display:none;margin-top:26px}
-.tit{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.tit h2{font-size:17px;font-weight:700}
-.tit .desc{display:flex;gap:8px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin-bottom:16px}
-.kpi{background:#fff;border:1px solid var(--gris-200);border-radius:9px;padding:14px 16px;box-shadow:var(--sombra)}
-.kpi .l{font-size:10.5px;color:var(--slate-600);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
-.kpi .v{font-family:var(--sora);font-size:25px;font-weight:700;color:var(--slate);margin-top:3px;line-height:1.15}
-.kpi.ok .v{color:var(--teal)} .kpi.warn .v{color:var(--ambar)} .kpi.bad .v{color:var(--rojo)}
-.kpi .sub{font-size:11px;color:var(--gris-400);margin-top:1px}
-
-.aviso{border-radius:9px;padding:13px 16px;margin-bottom:16px;font-size:13px;display:flex;gap:11px;align-items:flex-start;line-height:1.45}
+.zona .ic{font-size:36px;margin-bottom:10px}
+.zona .zt{font-weight:700;font-size:15px;color:var(--slate);margin-bottom:4px}
+.zona .zs{font-size:12.5px;color:var(--gris)}
+.zona.ok{border-style:solid;border-color:var(--teal);background:var(--teal-bg);padding:16px 20px;display:flex;align-items:center;gap:14px;text-align:left}
+.zona.ok .ic{font-size:22px;margin-bottom:0;flex-shrink:0}
+.zona.ok .zt{font-size:14px;margin-bottom:2px}
+.carpetas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
+.clabel{font-size:11px;font-weight:700;color:#64748B;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.confirm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.citem{background:var(--gris-100);border-radius:9px;padding:12px 14px}
+.citem .cl{font-size:10.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.citem .cv{font-size:13px;font-weight:700;color:var(--slate);word-break:break-all}
+.modos{display:flex;gap:8px;margin-bottom:20px}
+.modo{border:1px solid var(--gris-200);border-radius:8px;padding:11px 16px;cursor:pointer;flex:1;transition:.12s}
+.modo:hover{border-color:var(--teal-h)}.modo.sel{border-color:var(--teal);background:var(--teal-bg);box-shadow:inset 0 0 0 1px var(--teal)}
+.modo b{display:block;font-size:13.5px;font-weight:700;color:var(--slate);margin-bottom:2px}
+.modo span{font-size:11.5px;color:#64748B}
+.btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+button{font-family:'Sora',sans-serif;font-weight:600;font-size:14px;padding:12px 22px;border-radius:9px;border:none;cursor:pointer;transition:.14s;white-space:nowrap}
+button:disabled{opacity:.4;cursor:not-allowed}
+.b-pri{background:var(--teal);color:#fff}.b-pri:hover:not(:disabled){background:var(--teal-h)}
+.b-sec{background:var(--blanco);color:var(--teal);border:1.5px solid var(--teal)}.b-sec:hover:not(:disabled){background:var(--teal-bg)}
+.b-grande{width:100%;font-size:16px;padding:16px;border-radius:10px;background:var(--teal);color:#fff;margin-top:4px}
+.b-grande:hover:not(:disabled){background:var(--teal-h)}
+.prog-wrap{margin:20px 0}
+.prog-txt{font-size:13px;color:#64748B;margin-bottom:8px;min-height:20px}
+.prog-bar{height:8px;background:var(--gris-200);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;width:0;background:var(--teal);border-radius:4px;transition:width .3s}
+.logbox{background:var(--slate-950);color:#94A3B8;border-radius:8px;padding:12px 14px;font-family:ui-monospace,monospace;font-size:11.5px;max-height:110px;overflow-y:auto;margin-top:10px;white-space:pre-wrap;display:none}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:14px 16px}
+.kpi .kl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em}
+.kpi .kv{font-family:'Sora',sans-serif;font-size:26px;font-weight:700;margin-top:4px;line-height:1}
+.kpi .ks{font-size:11px;color:var(--gris);margin-top:2px}
+.kpi.ok .kv{color:var(--teal)}.kpi.warn .kv{color:var(--ambar)}.kpi.bad .kv{color:var(--rojo)}
+.aviso{border-radius:9px;padding:12px 16px;margin-bottom:12px;font-size:13px;display:flex;gap:10px;line-height:1.45}
 .aviso.warn{background:var(--ambar-bg);border-left:3px solid var(--ambar);color:#92400E}
-.aviso.bad{background:var(--rojo-bg);border-left:3px solid var(--rojo);color:#7F1D1D}
-.aviso b{display:block;margin-bottom:2px}
-
-.graficos{display:grid;grid-template-columns:300px 1fr;gap:12px;margin-bottom:12px}
-.g{background:#fff;border:1px solid var(--gris-200);border-radius:9px;padding:16px;box-shadow:var(--sombra);overflow:hidden}
-.g h3{font-size:12.5px;font-weight:700;color:var(--slate);margin-bottom:12px}
-.g canvas{max-width:100%}
-
-table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff}
-th{background:var(--slate);color:#fff;text-align:left;padding:9px 12px;font-weight:700;font-size:11.5px;position:sticky;top:0}
+.aviso b{display:block;margin-bottom:2px;font-weight:700}
+.graficos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.gpanel{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:14px}
+.gtitle{font-size:11.5px;font-weight:700;margin-bottom:10px}
+.tabla-wrap{border:1px solid var(--gris-200);border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:var(--slate);color:#fff;text-align:left;padding:9px 12px;font-size:11.5px}
 th.r,td.r{text-align:right}
 td{padding:8px 12px;border-bottom:1px solid var(--gris-200)}
-tbody tr:nth-child(even){background:#F8FAFB}
-.tabla{border:1px solid var(--gris-200);border-radius:9px;overflow:hidden;box-shadow:var(--sombra)}
+tbody tr:nth-child(even) td{background:#F8FAFB}
 .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-.pill.ok{background:#CCFBF1;color:#115E59} .pill.warn{background:var(--ambar-bg);color:#92400E} .pill.bad{background:var(--rojo-bg);color:#7F1D1D}
-
-#log{background:var(--slate-950);color:#94A3B8;border-radius:8px;padding:12px 14px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;max-height:130px;overflow-y:auto;margin-top:14px;white-space:pre-wrap;display:none}
-
-/* ---------- Navegador no compatible ---------- */
-#nocompat{display:none;min-height:70vh;place-items:center;text-align:center;padding:40px 24px}
-#nocompat .caja{max-width:560px}
-#nocompat h2{font-size:22px;margin:16px 0 10px}
-#nocompat p{color:var(--slate-700);margin-bottom:10px}
-#nocompat .nav{display:flex;gap:10px;justify-content:center;margin-top:20px}
-#nocompat .nav div{background:#fff;border:1px solid var(--gris-200);border-radius:8px;padding:12px 22px;font-weight:700;font-size:13px}
-
-@media(max-width:860px){.graficos{grid-template-columns:1fr}}
+.pill.ok{background:#CCFBF1;color:#115E59}.pill.warn{background:var(--ambar-bg);color:#92400E}.pill.bad{background:var(--rojo-bg);color:#7F1D1D}
+.res-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.desc-btns{display:flex;gap:8px}
+.b-desc{background:var(--slate);color:#fff;font-size:12.5px;padding:9px 15px;border-radius:7px}
+.b-desc:hover{background:var(--slate-950)}
+.barra-fija{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);border-top:1px solid var(--gris-200);backdrop-filter:blur(8px);padding:12px 24px;z-index:50;display:none}
+.barra-fija>div{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.bf-txt{font-size:12.5px;color:#64748B}.bf-txt b{color:var(--slate)}
+#nocompat{display:none;min-height:80vh;place-items:center;text-align:center;padding:40px}
+#nocompat h2{font-family:'Sora',sans-serif;font-size:22px;margin:16px 0 10px}
+@media(max-width:600px){.carpetas,.confirm-grid,.kpis,.graficos{grid-template-columns:1fr}.modos{flex-direction:column}}
 </style>
 </head>
 <body>
-
 <header>
-  <div class="barra">
+  <div class="hbar">
     <div class="hex"></div>
     <span class="marca">NEXOVA</span>
-    <span class="tagline">ORGANIZADOR FOTOGRÁFICO DE INVENTARIOS</span>
-    <span class="ver">v1.0</span>
+    <span class="sub">Organizador de Fotos</span>
+    <span class="priv">🔒 Tus archivos no salen de tu PC</span>
   </div>
 </header>
 
-<div class="privacidad"><div>
-  🔒 <span><b>Tus archivos nunca salen de tu computadora.</b> Todo el procesamiento ocurre en tu disco. No se sube ninguna foto ni ningún Excel a internet.</span>
-</div></div>
-
-<!-- Navegador sin soporte -->
-<section id="nocompat">
-  <div class="caja">
-    <div style="font-size:44px">🖥️</div>
-    <h2>Esta herramienta necesita Chrome o Edge</h2>
-    <p>Trabaja directamente sobre las carpetas de tu computadora, y eso solo lo permiten los navegadores basados en Chromium <b>en computadora de escritorio</b>.</p>
-    <p style="font-size:12.5px;color:var(--gris-400)">Firefox y Safari no implementan el acceso a carpetas locales. Tampoco funciona en celular o tablet.</p>
-    <div class="nav"><div>Google Chrome</div><div>Microsoft Edge</div></div>
+<div id="nocompat" style="display:none">
+  <div>
+    <div style="font-size:48px">🖥️</div>
+    <h2>Necesitas Chrome o Edge</h2>
+    <p style="color:#64748B;margin-top:8px">Funciona solo en Chrome o Edge de escritorio.</p>
   </div>
-</section>
+</div>
 
 <main id="app">
+  <div class="wiz">
+    <div class="wstep activo" id="ws1"><div class="wnum">1</div><span>Inventario</span></div>
+    <div class="wline" id="wl1"></div>
+    <div class="wstep" id="ws2"><div class="wnum">2</div><span>Carpetas</span></div>
+    <div class="wline" id="wl2"></div>
+    <div class="wstep" id="ws3"><div class="wnum">3</div><span>Organizar</span></div>
+    <div class="wline" id="wl3"></div>
+    <div class="wstep" id="ws4"><div class="wnum">4</div><span>Resultado</span></div>
+  </div>
 
-  <!-- 1 · INVENTARIO -->
-  <section class="paso">
-    <div class="cab"><div class="n">1</div><h2>Base de inventario</h2></div>
-    <p class="ayuda">Excel o CSV con el código de cada activo. La fila de encabezado se detecta sola; corrígela si el archivo trae logo o títulos arriba.</p>
-    <div class="rejilla">
-      <div style="grid-column:span 12">
-        <div class="zona" id="zInv">
-          <div class="ic">📄</div>
-          <div><div class="t">Elegir el Excel del inventario</div><div class="s">.xlsx · .xlsm · .xls · .csv</div></div>
-        </div>
-        <input type="file" id="fInv" accept=".xlsx,.xlsm,.xls,.csv" hidden>
+  <!-- PASO 1: INVENTARIO -->
+  <div class="pantalla visible" id="p1">
+    <div class="card">
+      <h2>Sube el inventario</h2>
+      <p>El Excel con los códigos de activos. La herramienta detecta automáticamente las columnas de código, familia y subfamilia.</p>
+      <div class="zona" id="zInv">
+        <div class="ic">📄</div>
+        <div class="zt">Haz clic para elegir el Excel del inventario</div>
+        <div class="zs">.xlsx · .xlsm · .xls · .csv</div>
       </div>
-      <div class="campo" style="grid-column:span 4"><label>Hoja</label><select id="hInv" disabled></select></div>
-      <div class="campo" style="grid-column:span 2"><label>Fila encabezado</label><input type="number" id="filaInv" min="1" value="1" disabled></div>
-      <div class="campo" style="grid-column:span 6"><label>Columna CÓDIGO del activo <span class="req">*</span></label><select id="cCodigo" disabled></select></div>
-      <div class="campo" style="grid-column:span 6"><label>Columna ENLACE al catálogo</label><select id="cEnlaceInv" disabled></select></div>
-      <div class="campo" style="grid-column:span 6"><label>Columna DESCRIPCIÓN</label><select id="cDesc" disabled></select></div>
+      <input type="file" id="fInv" accept=".xlsx,.xlsm,.xls,.csv" hidden>
+      <div id="inv-info" style="display:none;margin-top:14px">
+        <div id="inv-alerta" class="aviso warn" style="display:none">
+          <span>⚠️</span><div id="inv-alerta-txt"></div>
+        </div>
+        <div style="font-size:12.5px;padding:10px 14px;background:var(--gris-100);border-radius:8px;color:#475569" id="inv-resumen"></div>
+      </div>
+      <div class="btns">
+        <button class="b-pri" id="btn1" disabled onclick="irA(2)">Siguiente →</button>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <!-- 2 · CATÁLOGO -->
-  <section class="paso" id="pasoCat">
-    <div class="cab"><div class="n">2</div><h2>Estructura del catálogo (Familia / Subfamilia)</h2></div>
-    <p class="ayuda">El enlace entre ambos archivos puede ser el código de catálogo o el texto de la descripción. Tú eliges las columnas: sirve para cualquier cliente sin tocar código.</p>
-    <label class="check" style="margin-bottom:14px">
-      <input type="checkbox" id="sinCat">
-      <span>El inventario <b>ya trae</b> Familia y Subfamilia — no necesito un segundo archivo</span>
-    </label>
-    <div id="bloqueCat">
-      <div class="rejilla">
-        <div style="grid-column:span 12">
-          <div class="zona" id="zCat">
-            <div class="ic">📋</div>
-            <div><div class="t">Elegir el Excel del catálogo</div><div class="s">.xlsx · .xlsm · .xls · .csv</div></div>
+  <!-- PASO 2: CARPETAS -->
+  <div class="pantalla" id="p2">
+    <div class="card">
+      <h2>Elige las carpetas</h2>
+      <p>¿Dónde están las fotos y dónde quieres guardar el resultado organizado?</p>
+      <div class="carpetas">
+        <div>
+          <div class="clabel">📁 Carpeta de fotos</div>
+          <div class="zona" id="zOrigen">
+            <div class="ic">📁</div>
+            <div class="zt">Elegir carpeta de fotos</div>
+            <div class="zs">Donde están las fotos del campo</div>
           </div>
-          <input type="file" id="fCat" accept=".xlsx,.xlsm,.xls,.csv" hidden>
         </div>
-        <div class="campo" style="grid-column:span 4"><label>Hoja</label><select id="hCat" disabled></select></div>
-        <div class="campo" style="grid-column:span 2"><label>Fila encabezado</label><input type="number" id="filaCat" min="1" value="1" disabled></div>
-        <div class="campo" style="grid-column:span 6"><label>Columna ENLACE <span class="req">*</span></label><select id="cEnlaceCat" disabled></select></div>
-        <div class="campo" style="grid-column:span 6"><label>Columna FAMILIA <span class="req">*</span></label><select id="cFamilia" disabled></select></div>
-        <div class="campo" style="grid-column:span 6"><label>Columna SUBFAMILIA</label><select id="cSubfamilia" disabled></select></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 3 · CARPETAS -->
-  <section class="paso">
-    <div class="cab"><div class="n">3</div><h2>Carpetas</h2></div>
-    <p class="ayuda">Las fotos deben llamarse como el código del activo. Fotos múltiples: <b>COD-1</b>, <b>COD_2</b>, <b>COD (3)</b>.</p>
-    <div class="rejilla">
-      <div style="grid-column:span 6"><div class="zona" id="zOrigen"><div class="ic">📁</div><div><div class="t">Carpeta de fotos (origen)</div><div class="s">Aún no seleccionada</div></div></div></div>
-      <div style="grid-column:span 6"><div class="zona" id="zDestino"><div class="ic">📂</div><div><div class="t">Carpeta destino</div><div class="s">Aún no seleccionada</div></div></div></div>
-      <div style="grid-column:span 12">
-        <label class="check"><input type="checkbox" id="recursivo" checked><span>Incluir subcarpetas del origen</span></label>
-      </div>
-    </div>
-  </section>
-
-  <!-- 4 · OPCIONES -->
-  <section class="paso">
-    <div class="cab"><div class="n">4</div><h2>Cómo organizar</h2></div>
-    <div class="rejilla">
-      <div class="campo" style="grid-column:span 12">
-        <label>Archivos originales</label>
-        <div class="opciones" id="modo">
-          <div class="op sel" data-v="copiar"><b>COPIAR</b><span>Deja los originales intactos · más seguro</span></div>
-          <div class="op" data-v="mover"><b>MOVER</b><span>Vacía el origen · instantáneo</span></div>
+        <div>
+          <div class="clabel">📂 Carpeta destino</div>
+          <div class="zona" id="zDestino">
+            <div class="ic">📂</div>
+            <div class="zt">Elegir carpeta destino</div>
+            <div class="zs">Carpeta vacía donde se organizarán</div>
+          </div>
         </div>
       </div>
-      <div class="campo" style="grid-column:span 12">
-        <label>Estructura de carpetas</label>
-        <div class="opciones" id="niveles">
-          <div class="op" data-v="1"><b>Familia</b><span>Un nivel</span></div>
-          <div class="op" data-v="2"><b>Familia / Subfamilia</b><span>Dos niveles</span></div>
-          <div class="op sel" data-v="3"><b>Familia / Subfamilia / Código</b><span>Tres niveles</span></div>
+      <div class="btns">
+        <button class="b-sec" onclick="irA(1)">← Atrás</button>
+        <button class="b-pri" id="btn2" disabled onclick="irA(3);mostrarConfirmacion()">Siguiente →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 3: ORGANIZAR -->
+  <div class="pantalla" id="p3">
+    <div class="card">
+      <h2>Listo para organizar</h2>
+      <p>Revisa el resumen y elige cómo manejar los archivos originales.</p>
+      <div class="confirm-grid" id="confirmGrid"></div>
+      <div class="clabel" style="margin-bottom:8px">¿Qué hacer con los archivos originales?</div>
+      <div class="modos" id="modos">
+        <div class="modo sel" data-v="copiar"><b>Copiar</b><span>Originales intactos · más seguro</span></div>
+        <div class="modo" data-v="mover"><b>Mover</b><span>Más rápido con miles de fotos</span></div>
+      </div>
+      <button class="b-grande" id="btnSimular">👁 Simular primero (sin tocar archivos)</button>
+      <div style="text-align:center;font-size:12px;color:var(--gris);margin-top:6px">Ver el resultado antes de ejecutar de verdad</div>
+      <div class="prog-wrap" id="progWrap" style="display:none">
+        <div class="prog-txt" id="progTxt"></div>
+        <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      </div>
+      <div class="logbox" id="logbox"></div>
+      <div class="btns">
+        <button class="b-sec" onclick="irA(2)">← Atrás</button>
+        <button class="b-pri" id="btnEjecutar" disabled>⚡ Ejecutar de verdad</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 4: RESULTADO -->
+  <div class="pantalla" id="p4">
+    <div class="card">
+      <div class="res-header">
+        <h2 id="tituloRes">Resultado</h2>
+        <div class="desc-btns">
+          <button class="b-desc" id="btnExcel">⬇ Excel</button>
+          <button class="b-desc" id="btnPDF">⬇ PDF</button>
         </div>
       </div>
-      <div class="campo" style="grid-column:span 6">
-        <label>Nombre del cliente <span style="font-weight:400;color:var(--gris-400)">— aparece en el informe PDF</span></label>
-        <input type="text" id="cliente" placeholder="Ej.: Amauta Impresiones Comerciales S.A.C.">
+      <div id="avisos"></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="graficos">
+        <div class="gpanel"><div class="gtitle">Estado de las fotos</div><canvas id="gEstado" width="260" height="200"></canvas></div>
+        <div class="gpanel"><div class="gtitle">Cobertura por familia</div><canvas id="gCobertura" width="380" height="200"></canvas></div>
       </div>
-      <div style="grid-column:span 6;display:flex;align-items:flex-end">
-        <label class="check"><input type="checkbox" id="huerfanas" checked><span>Llevar las fotos sin código a <b>_SIN_CLASIFICAR</b></span></label>
+      <div class="tabla-wrap">
+        <table><thead><tr>
+          <th>Familia</th><th>Subfamilia</th>
+          <th class="r">Activos</th><th class="r">Con foto</th>
+          <th class="r">Sin foto</th><th class="r">Cobertura</th>
+        </tr></thead><tbody id="tbody"></tbody></table>
       </div>
-    </div>
-  </section>
-
-  <!-- RESULTADOS -->
-  <section id="resultados">
-    <div class="tit">
-      <h2 id="tResultado">Resultado</h2>
-      <div class="desc">
-        <button class="b3" id="btnExcel">⬇ Excel de conciliación</button>
-        <button class="b3" id="btnPDF">⬇ Informe PDF</button>
+      <div style="margin-top:16px;text-align:center">
+        <button class="b-sec" onclick="irA(3)" style="font-size:13px">← Volver y ejecutar</button>
       </div>
     </div>
-    <div id="avisos"></div>
-    <div class="kpis" id="kpis"></div>
-    <div class="graficos">
-      <div class="g"><h3>Estado de las fotos</h3><canvas id="gEstado" width="268" height="230"></canvas></div>
-      <div class="g"><h3>Cobertura fotográfica por familia</h3><canvas id="gCobertura" width="740" height="230"></canvas></div>
-    </div>
-    <div class="g" style="margin-bottom:12px"><h3>Activos con y sin registro fotográfico, por familia</h3><canvas id="gActivos" width="1100" height="230" style="width:100%"></canvas></div>
-    <div class="tabla"><table><thead><tr>
-      <th>Familia</th><th>Subfamilia</th><th class="r">Activos</th><th class="r">Con foto</th>
-      <th class="r">Sin foto</th><th class="r">Cobertura</th><th class="r">Fotos</th>
-    </tr></thead><tbody id="tbody"></tbody></table></div>
-    <pre id="log"></pre>
-  </section>
+  </div>
 </main>
 
-<div class="acciones" id="acciones">
+<div class="barra-fija" id="barraFija">
   <div>
-    <div class="estado">
-      <div id="txtEstado">Completa los pasos y pulsa <b>Simular</b>.</div>
-      <div class="progreso"><i id="barra"></i></div>
-    </div>
-    <button class="b1" id="btnSimular">1 · Simular (no toca archivos)</button>
-    <button class="b2" id="btnEjecutar" disabled>2 · Ejecutar</button>
+    <div class="bf-txt">Simulación lista · <b id="bfResumen"></b></div>
+    <button class="b-pri" id="btnEjecutarBarra">⚡ Ejecutar de verdad</button>
   </div>
 </div>
 
@@ -288,6 +239,6 @@ tbody tr:nth-child(even){background:#F8FAFB}
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="vendor/chart.umd.js"></script>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/app2.js"></script>
 </body>
 </html>
