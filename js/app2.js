@@ -232,11 +232,14 @@ function pintarDashboard(cfg, m) {
   ].join('');
 
   // Calcular datos para TODAS las dimensiones (vacío si no hay columna)
+  const dimACol = {
+    familia: cfg.colFamilia, subfamilia: cfg.colSubfamilia,
+    area: cfg.colArea, sede: cfg.colSede,
+    estado: cfg.colEstado, linea: cfg.colLinea,
+  };
   S.datosDims = {};
   DIMS_CONFIG.forEach(d => {
-    const col = cfg[`col${d.v.charAt(0).toUpperCase()+d.v.slice(1)}`] ||
-                cfg[`colArea`] && d.v==='area' && cfg.colArea ||
-                S.inv.cols[d.v];
+    const col = dimACol[d.v] || null;
     S.datosDims[d.v] = col ? calcDim(col) : [];
   });
 
