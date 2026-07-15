@@ -280,54 +280,44 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
   <!-- PASO 4 -->
   <div class="pantalla" id="p4">
     <div class="card">
-      <div class="res-header">
-        <h2 id="tituloRes">Resultado</h2>
+      <div class="dash-header">
+        <h2 id="tituloRes">Dashboard de cobertura</h2>
         <div class="desc-btns">
-          <button class="b-desc teal" onclick="descargarResumen()">⬇ Resumen Excel</button>
-          <button class="b-desc" id="btnExcel">⬇ Conciliación Excel</button>
-          <button class="b-desc" id="btnPDF">⬇ Informe PDF</button>
+          <button class="b-desc teal" onclick="descargarResumen()">&#11015; Resumen Excel</button>
+          <button class="b-desc" id="btnExcel">&#11015; Conciliaci&#243;n</button>
+          <button class="b-desc" id="btnPDF">&#11015; Informe PDF</button>
         </div>
       </div>
       <div id="avisos"></div>
       <div class="kpis" id="kpis"></div>
-
-      <!-- Controles de gráficos -->
-      <div class="graf-controles">
+      <div class="dim-controls">
         <label>Ver por:</label>
-        <select id="selDimension">
-          <option value="familia">Familia</option>
-          <option value="subfamilia">Subfamilia</option>
-          <option value="area">Área</option>
-          <option value="sede">Sede</option>
-          <option value="estado">Estado</option>
-          <option value="linea">Línea de producción</option>
-        </select>
-        <label>Tipo de gráfico:</label>
-        <select id="selGrafico">
+        <div class="dtabs" id="dimTabs"></div>
+        <label style="margin-left:auto">Gr&#225;fico:</label>
+        <select id="selGrafico" onchange="document.querySelector('.dtab.activo')?.click()">
           <option value="barrasH">Barras horizontales</option>
           <option value="barrasV">Barras verticales</option>
           <option value="dona">Dona</option>
         </select>
       </div>
-
-      <div class="graficos">
-        <div class="gpanel"><div class="gtitle">Activos con / sin foto</div><canvas id="gEstado" width="240" height="220"></canvas></div>
-        <div class="gpanel"><div class="gtitle">Cobertura fotográfica</div><canvas id="gCobertura" width="580" height="220"></canvas></div>
+      <div class="graficos-grid">
+        <div class="gpanel"><div class="gtitle">Total con / sin foto</div><canvas id="gDona" width="200" height="220"></canvas></div>
+        <div class="gpanel"><div class="gtitle">Distribuci&#243;n por dimensi&#243;n</div><canvas id="gPrincipal" width="680" height="220"></canvas></div>
       </div>
-
-      <div class="tabla-wrap">
+      <div class="tabla-wrap" style="margin-bottom:12px">
         <table><thead><tr>
-          <th id="thDim">Familia</th>
+          <th id="thDim">Dimensi&#243;n</th>
           <th class="r">Activos</th><th class="r">Con foto</th>
           <th class="r">Sin foto</th><th class="r">Cobertura</th>
         </tr></thead><tbody id="tbody"></tbody></table>
       </div>
-
-      <div style="margin-top:16px;text-align:center">
-        <button class="b-sec" onclick="irA(3)" style="font-size:13px">← Volver y ejecutar</button>
+      <div id="resumenCards"></div>
+      <div style="margin-top:14px;text-align:center">
+        <button class="b-sec" onclick="irA(3)" style="font-size:12.5px">&#8592; Volver</button>
       </div>
     </div>
   </div>
+</div>
 </main>
 
 <div class="barra-fija" id="barraFija">
