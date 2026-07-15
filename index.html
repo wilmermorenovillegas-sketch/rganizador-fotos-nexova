@@ -255,10 +255,18 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
           <div class="prog-txt" id="progTxt">Procesando...</div>
           <div class="prog-tiempo" id="tiempo-transcurrido"></div>
         </div>
-        <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+        <div class="prog-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div class="prog-txt" id="progTxt" style="font-size:12.5px;color:#64748B"></div>
+        <div id="progTiempo" style="font-size:13px;color:var(--teal);font-weight:700;font-family:'Sora',sans-serif;font-variant-numeric:tabular-nums"></div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
       </div>
       <div class="pantalla-completado" id="pantalla-completado">
         <span>🎉</span><div id="completado-msg"></div>
+      </div>
+      <div id="completado" style="display:none;align-items:center;gap:12px;background:#D1FAE5;border:1.5px solid #059669;border-radius:10px;padding:14px 18px;margin-top:12px">
+        <span style="font-size:24px">🎉</span>
+        <div id="completado-msg" style="font-size:14px;font-weight:700;color:#065F46"></div>
       </div>
       <div class="logbox" id="logbox"></div>
 
