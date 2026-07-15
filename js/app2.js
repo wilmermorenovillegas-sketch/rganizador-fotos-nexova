@@ -152,6 +152,13 @@ async function correr(simulacion) {
   }, 500);
 
   try {
+    // Verificaciones tempranas con logs visibles
+    log('Iniciando ' + (simulacion ? 'simulación' : 'ejecución') + '...');
+    if (!S.origen) throw new Error('No se seleccionó carpeta de fotos.');
+    if (!S.destino) throw new Error('No se seleccionó carpeta destino.');
+    log('Carpeta origen: ' + S.origen.name);
+    log('Carpeta destino: ' + S.destino.name);
+
     setProg(0.05, 'Escaneando carpeta de fotos…');
     const fotos = await escanearFotos(S.origen, true, S.destino,
       n => setProg(0.05+Math.min(n/5000,1)*0.1, `Escaneando… ${num(n)} fotos encontradas`));
