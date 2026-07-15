@@ -8,17 +8,15 @@
 <style>
 :root{--teal:#0F766E;--teal-h:#0D9488;--teal-bg:#F0FDFA;--slate:#1E293B;--slate-950:#0F172A;--gris:#94A3B8;--gris-200:#E2E8F0;--gris-100:#F1F5F9;--fondo:#F4F6F8;--blanco:#fff;--ambar:#D97706;--ambar-bg:#FEF3C7;--rojo:#B91C1C;--rojo-bg:#FEE2E2;--verde:#059669;--verde-bg:#D1FAE5}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--fondo);color:var(--slate);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:"DM Sans",system-ui,sans-serif;background:var(--fondo);color:var(--slate);min-height:100vh;-webkit-font-smoothing:antialiased}
 header{background:var(--slate);border-bottom:3px solid var(--teal);padding:0 24px}
-.hbar{max-width:900px;margin:0 auto;height:56px;display:flex;align-items:center;gap:12px}
+.hbar{max-width:1000px;margin:0 auto;height:56px;display:flex;align-items:center;gap:12px}
 .hex{width:22px;height:25px;background:var(--teal);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);flex-shrink:0}
-.marca{font-family:'Sora',sans-serif;font-weight:800;font-size:17px;color:#fff;letter-spacing:.12em}
+.marca{font-family:"Sora",sans-serif;font-weight:800;font-size:17px;color:#fff;letter-spacing:.12em}
 .sub{font-size:11px;color:#0D9488;letter-spacing:.05em;border-left:1px solid #334155;padding-left:12px}
 .priv{font-size:11px;color:var(--gris);margin-left:auto}
-main{max-width:900px;margin:0 auto;padding:32px 24px 120px}
-
-/* WIZARD */
-.wiz{display:flex;align-items:center;margin-bottom:32px}
+main{max-width:1000px;margin:0 auto;padding:28px 24px 100px}
+.wiz{display:flex;align-items:center;margin-bottom:28px}
 .wstep{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--gris);transition:.2s}
 .wstep.activo{color:var(--teal)}.wstep.listo{color:var(--verde)}
 .wnum{width:26px;height:26px;border-radius:50%;border:2px solid currentColor;display:grid;place-items:center;font-size:11px;font-weight:800;flex-shrink:0}
@@ -26,205 +24,120 @@ main{max-width:900px;margin:0 auto;padding:32px 24px 120px}
 .wstep.listo .wnum{background:var(--verde);color:#fff;border-color:var(--verde)}
 .wline{flex:1;height:2px;background:var(--gris-200);margin:0 8px}.wline.ok{background:var(--verde)}
 .pantalla{display:none}.pantalla.visible{display:block}
-
-/* TARJETAS */
-.card{background:var(--blanco);border:1px solid var(--gris-200);border-radius:14px;padding:28px;box-shadow:0 1px 3px rgba(15,23,42,.05);margin-bottom:14px}
-.card h2{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px}
-.card p{font-size:13.5px;color:#64748B;margin-bottom:24px;line-height:1.5}
-
-/* ZONA DRAG&DROP */
-.zona{border:2px dashed var(--gris-200);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:.15s;background:#FAFBFC}
+.card{background:var(--blanco);border:1px solid var(--gris-200);border-radius:14px;padding:24px 28px;box-shadow:0 1px 3px rgba(15,23,42,.05);margin-bottom:12px}
+.card h2{font-family:"Sora",sans-serif;font-size:19px;font-weight:700;margin-bottom:5px}
+.card p{font-size:13px;color:#64748B;margin-bottom:20px;line-height:1.5}
+.zona{border:2px dashed var(--gris-200);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:.15s;background:#FAFBFC}
 .zona:hover,.zona.drag{border-color:var(--teal);background:var(--teal-bg)}
-.zona .ic{font-size:36px;margin-bottom:10px}
-.zona .zt{font-weight:700;font-size:15px;color:var(--slate);margin-bottom:4px}
-.zona .zs{font-size:12.5px;color:var(--gris)}
-.zona.ok{border-style:solid;border-color:var(--teal);background:var(--teal-bg);padding:16px 20px;display:flex;align-items:center;gap:14px;text-align:left}
-.zona.ok .ic{font-size:22px;margin-bottom:0;flex-shrink:0}
-.zona.ok .zt{font-size:14px;margin-bottom:2px}
-.drag-hint{font-size:11.5px;color:var(--gris);text-align:center;margin-top:8px}
-
-/* CARPETAS */
+.zona .ic{font-size:32px;margin-bottom:8px}.zona .zt{font-weight:700;font-size:14px;color:var(--slate);margin-bottom:3px}.zona .zs{font-size:12px;color:var(--gris)}
+.zona.ok{border-style:solid;border-color:var(--teal);background:var(--teal-bg);padding:14px 18px;display:flex;align-items:center;gap:12px;text-align:left}
+.zona.ok .ic{font-size:20px;margin-bottom:0;flex-shrink:0}.zona.ok .zt{font-size:13.5px;margin-bottom:2px}
+.drag-hint{font-size:11px;color:var(--gris);text-align:center;margin-top:6px}
 .carpetas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
-.clabel{font-size:11px;font-weight:700;color:#64748B;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-
-/* CONFIRMACION */
-.confirm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
-.citem{background:var(--gris-100);border-radius:9px;padding:12px 14px}
-.citem .cl{font-size:10.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.clabel{font-size:11px;font-weight:700;color:#64748B;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.confirm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.citem{background:var(--gris-100);border-radius:9px;padding:11px 14px}
+.citem .cl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
 .citem .cv{font-size:13px;font-weight:700;color:var(--slate);word-break:break-all}
-
-/* MODOS */
-.modos{display:flex;gap:8px;margin-bottom:20px}
-.modo{border:1px solid var(--gris-200);border-radius:8px;padding:11px 16px;cursor:pointer;flex:1;transition:.12s}
+.modos{display:flex;gap:8px;margin-bottom:18px}
+.modo{border:1px solid var(--gris-200);border-radius:8px;padding:10px 15px;cursor:pointer;flex:1;transition:.12s}
 .modo:hover{border-color:var(--teal-h)}.modo.sel{border-color:var(--teal);background:var(--teal-bg);box-shadow:inset 0 0 0 1px var(--teal)}
-.modo b{display:block;font-size:13.5px;font-weight:700;color:var(--slate);margin-bottom:2px}
-.modo span{font-size:11.5px;color:#64748B}
-
-/* BOTONES */
-.btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
-button{font-family:'Sora',sans-serif;font-weight:600;font-size:14px;padding:12px 22px;border-radius:9px;border:none;cursor:pointer;transition:.14s;white-space:nowrap}
+.modo b{display:block;font-size:13px;font-weight:700;color:var(--slate);margin-bottom:2px}.modo span{font-size:11.5px;color:#64748B}
+.btns{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+button{font-family:"Sora",sans-serif;font-weight:600;font-size:13.5px;padding:11px 20px;border-radius:9px;border:none;cursor:pointer;transition:.14s;white-space:nowrap}
 button:disabled{opacity:.4;cursor:not-allowed}
 .b-pri{background:var(--teal);color:#fff}.b-pri:hover:not(:disabled){background:var(--teal-h)}
 .b-sec{background:var(--blanco);color:var(--teal);border:1.5px solid var(--teal)}.b-sec:hover:not(:disabled){background:var(--teal-bg)}
-.b-grande{width:100%;font-size:16px;padding:16px;border-radius:10px;background:var(--teal);color:#fff;margin-top:4px}
+.b-grande{width:100%;font-size:15px;padding:15px;border-radius:10px;background:var(--teal);color:#fff;margin-top:4px}
 .b-grande:hover:not(:disabled){background:var(--teal-h)}
-
-/* PROGRESO */
-.prog-wrap{margin:20px 0;display:none}
-.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.prog-txt{font-size:13px;color:#64748B;min-height:20px}
-.prog-tiempo{font-size:12px;color:var(--teal);font-weight:700;font-family:'Sora',sans-serif}
+.prog-wrap{margin:16px 0;display:none}
+.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.prog-txt{font-size:12.5px;color:#64748B;min-height:18px}
+.prog-tiempo{font-size:13px;color:var(--teal);font-weight:700;font-family:"Sora",sans-serif;font-variant-numeric:tabular-nums}
 .prog-bar{height:10px;background:var(--gris-200);border-radius:5px;overflow:hidden}
-.prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--teal-h));border-radius:5px;transition:width .3s}
-
-/* COMPLETADO */
-.pantalla-completado{display:none;align-items:center;gap:12px;background:var(--verde-bg);border:1.5px solid var(--verde);border-radius:10px;padding:16px 20px;margin-top:14px}
-.pantalla-completado span{font-size:28px}
+.prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--teal),#2DD4BF);border-radius:5px;transition:width .4s}
+.completado{display:none;align-items:center;gap:12px;background:var(--verde-bg);border:1.5px solid var(--verde);border-radius:10px;padding:14px 18px;margin-top:12px}
 #completado-msg{font-size:14px;font-weight:700;color:#065F46}
-
-.logbox{background:var(--slate-950);color:#94A3B8;border-radius:8px;padding:12px 14px;font-family:ui-monospace,monospace;font-size:11.5px;max-height:110px;overflow-y:auto;margin-top:10px;white-space:pre-wrap;display:none}
-
-/* RESULTADOS */
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
-.kpi{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:14px 16px}
-.kpi .kl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em}
-.kpi .kv{font-family:'Sora',sans-serif;font-size:26px;font-weight:700;margin-top:4px;line-height:1}
-.kpi .ks{font-size:11px;color:var(--gris);margin-top:2px}
+.logbox{background:var(--slate-950);color:#94A3B8;border-radius:8px;padding:11px 14px;font-family:ui-monospace,monospace;font-size:11px;max-height:100px;overflow-y:auto;margin-top:10px;white-space:pre-wrap;display:none}
+.tag{display:inline-block;background:var(--gris-100);border-radius:5px;padding:2px 7px;font-size:11.5px;margin:2px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
+.kpi{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:13px 15px}
+.kpi .kl{font-size:9.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em}
+.kpi .kv{font-family:"Sora",sans-serif;font-size:24px;font-weight:700;margin-top:3px;line-height:1}
+.kpi .ks{font-size:10.5px;color:var(--gris);margin-top:2px}
 .kpi.ok .kv{color:var(--teal)}.kpi.warn .kv{color:var(--ambar)}.kpi.bad .kv{color:var(--rojo)}
-
-.aviso{border-radius:9px;padding:12px 16px;margin-bottom:12px;font-size:13px;display:flex;gap:10px;line-height:1.45}
+.aviso{border-radius:9px;padding:11px 14px;margin-bottom:10px;font-size:12.5px;display:flex;gap:10px;line-height:1.45}
 .aviso.warn{background:var(--ambar-bg);border-left:3px solid var(--ambar);color:#92400E}
 .aviso b{display:block;margin-bottom:2px;font-weight:700}
-
-/* CONTROLES DE GRAFICOS */
-.graf-controles{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-.graf-controles label{font-size:11.5px;font-weight:700;color:#64748B}
-.graf-controles select{padding:7px 10px;border:1px solid var(--gris-200);border-radius:7px;font-size:13px;color:var(--slate);background:#fff;font-family:'DM Sans',sans-serif}
-
-.graficos{display:grid;grid-template-columns:260px 1fr;gap:12px;margin-bottom:12px}
+.dash-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.dash-header h2{font-family:"Sora",sans-serif;font-size:18px;font-weight:700}
+.desc-btns{display:flex;gap:6px;flex-wrap:wrap}
+.b-desc{background:var(--slate);color:#fff;font-size:11.5px;padding:7px 12px;border-radius:7px;border:none;cursor:pointer;font-family:"Sora",sans-serif;font-weight:600;transition:.14s}
+.b-desc:hover{background:var(--slate-950)}.b-desc.teal{background:var(--teal)}.b-desc.teal:hover{background:var(--teal-h)}
+.dim-controls{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;background:var(--gris-100);border-radius:9px;padding:10px 14px}
+.dim-controls label{font-size:11.5px;font-weight:700;color:#64748B}
+.dim-controls select{padding:6px 10px;border:1px solid var(--gris-200);border-radius:7px;font-size:12.5px;color:var(--slate);background:#fff;font-family:"DM Sans",sans-serif}
+.dtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0}
+.dtab{background:#fff;border:1px solid var(--gris-200);border-radius:7px;padding:6px 13px;font-size:12px;font-weight:600;color:#64748B;cursor:pointer;font-family:"Sora",sans-serif;transition:.12s}
+.dtab:hover{border-color:var(--teal-h);color:var(--teal)}
+.dtab.activo{background:var(--teal);color:#fff;border-color:var(--teal)}
+.graficos-grid{display:grid;grid-template-columns:220px 1fr;gap:10px;margin-bottom:10px}
 .gpanel{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:14px}
-.gtitle{font-size:11.5px;font-weight:700;margin-bottom:10px;color:var(--slate)}
-
-/* TABLA */
-.tabla-wrap{border:1px solid var(--gris-200);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.gtitle{font-size:11px;font-weight:700;margin-bottom:8px;color:#64748B;text-transform:uppercase;letter-spacing:.04em}
+.tabla-wrap{border:1px solid var(--gris-200);border-radius:10px;overflow:hidden}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{background:var(--slate);color:#fff;text-align:left;padding:9px 12px;font-size:11.5px}
+th{background:var(--slate);color:#fff;text-align:left;padding:8px 12px;font-size:11px;font-weight:700}
 th.r,td.r{text-align:right}
-td{padding:8px 12px;border-bottom:1px solid var(--gris-200)}
+td{padding:7px 12px;border-bottom:1px solid var(--gris-200)}
 tbody tr:nth-child(even) td{background:#F8FAFB}
 .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
 .pill.ok{background:#CCFBF1;color:#115E59}.pill.warn{background:var(--ambar-bg);color:#92400E}.pill.bad{background:var(--rojo-bg);color:#7F1D1D}
-
-.res-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
-.desc-btns{display:flex;gap:8px;flex-wrap:wrap}
-.b-desc{background:var(--slate);color:#fff;font-size:12px;padding:8px 14px;border-radius:7px}
-.b-desc:hover{background:var(--slate-950)}
-.b-desc.teal{background:var(--teal)}.b-desc.teal:hover{background:var(--teal-h)}
-
-/* BARRA FIJA */
-.barra-fija{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);border-top:1px solid var(--gris-200);backdrop-filter:blur(8px);padding:12px 24px;z-index:50;display:none}
-.barra-fija>div{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.barra-fija{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);border-top:1px solid var(--gris-200);backdrop-filter:blur(8px);padding:11px 24px;z-index:50;display:none}
+.barra-fija>div{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .bf-txt{font-size:12.5px;color:#64748B}.bf-txt b{color:var(--slate)}
-
-/* NO COMPAT */
 #nocompat{display:none;min-height:80vh;place-items:center;text-align:center;padding:40px}
-#nocompat h2{font-family:'Sora',sans-serif;font-size:22px;margin:16px 0 10px}
-
-@media(max-width:640px){
-  .carpetas,.confirm-grid,.kpis,.graficos{grid-template-columns:1fr}
-  .modos{flex-direction:column}
-  .graf-controles{flex-direction:column;align-items:flex-start}
-}
+#nocompat h2{font-family:"Sora",sans-serif;font-size:22px;margin:16px 0 10px}
+#inv-info{display:none;margin-top:12px}
+@media(max-width:640px){.carpetas,.confirm-grid,.kpis,.graficos-grid{grid-template-columns:1fr}.modos{flex-direction:column}}
 </style>
 </head>
 <body>
-<header>
-  <div class="hbar">
-    <div class="hex"></div>
-    <span class="marca">NEXOVA</span>
-    <span class="sub">Organizador de Fotos</span>
-    <span class="priv">🔒 Tus archivos no salen de tu PC</span>
-  </div>
-</header>
-
-<div id="nocompat" style="display:none">
-  <div>
-    <div style="font-size:48px">🖥️</div>
-    <h2>Necesitas Chrome o Edge</h2>
-    <p style="color:#64748B;margin-top:8px">Funciona solo en Chrome o Edge de escritorio.</p>
-  </div>
-</div>
-
+<header><div class="hbar"><div class="hex"></div><span class="marca">NEXOVA</span><span class="sub">Organizador de Fotos</span><span class="priv">🔒 Tus archivos no salen de tu PC</span></div></header>
+<div id="nocompat" style="display:none"><div><div style="font-size:48px">🖥️</div><h2>Necesitas Chrome o Edge</h2><p style="color:#64748B;margin-top:8px">Solo funciona en Chrome o Edge de escritorio.</p></div></div>
 <main id="app">
-  <div class="wiz">
-    <div class="wstep activo" id="ws1"><div class="wnum">1</div><span>Inventario</span></div>
-    <div class="wline" id="wl1"></div>
-    <div class="wstep" id="ws2"><div class="wnum">2</div><span>Carpetas</span></div>
-    <div class="wline" id="wl2"></div>
-    <div class="wstep" id="ws3"><div class="wnum">3</div><span>Organizar</span></div>
-    <div class="wline" id="wl3"></div>
-    <div class="wstep" id="ws4"><div class="wnum">4</div><span>Resultado</span></div>
-  </div>
+  <div class="wiz"><div class="wstep activo" id="ws1"><div class="wnum">1</div><span>Inventario</span></div><div class="wline" id="wl1"></div><div class="wstep" id="ws2"><div class="wnum">2</div><span>Carpetas</span></div><div class="wline" id="wl2"></div><div class="wstep" id="ws3"><div class="wnum">3</div><span>Organizar</span></div><div class="wline" id="wl3"></div><div class="wstep" id="ws4"><div class="wnum">4</div><span>Dashboard</span></div></div>
 
-  <!-- PASO 1 -->
   <div class="pantalla visible" id="p1">
     <div class="card">
       <h2>Sube el inventario</h2>
-      <p>El Excel con los códigos de activos. Detecta automáticamente el código, familia, subfamilia, área, sede y estado.</p>
-      <div class="zona" id="zInv">
-        <div class="ic">📄</div>
-        <div class="zt">Haz clic o arrastra el Excel aquí</div>
-        <div class="zs">.xlsx · .xlsm · .xls · .csv</div>
-      </div>
-      <div class="drag-hint">💡 También puedes arrastrar el archivo directamente a esta área</div>
+      <p>El Excel con los códigos de activos. La herramienta detecta automáticamente código, familia, subfamilia, área, sede y estado.</p>
+      <div class="zona" id="zInv"><div class="ic">📄</div><div class="zt">Haz clic o arrastra el Excel aquí</div><div class="zs">.xlsx · .xlsm · .xls · .csv</div></div>
+      <div class="drag-hint">💡 También puedes arrastrar el archivo directamente a esta zona</div>
       <input type="file" id="fInv" accept=".xlsx,.xlsm,.xls,.csv" hidden>
-      <div id="inv-info" style="display:none;margin-top:14px">
-        <div id="inv-alerta" class="aviso warn" style="display:none">
-          <span>⚠️</span><div id="inv-alerta-txt"></div>
-        </div>
-        <div style="font-size:12px;padding:10px 14px;background:var(--gris-100);border-radius:8px;color:#475569;line-height:1.6" id="inv-resumen"></div>
+      <div id="inv-info">
+        <div id="inv-alerta" class="aviso warn" style="display:none"><span>⚠️</span><div id="inv-alerta-txt"></div></div>
+        <div style="font-size:12px;padding:9px 13px;background:var(--gris-100);border-radius:8px;color:#475569;line-height:1.8" id="inv-resumen"></div>
       </div>
-      <div class="btns">
-        <button class="b-pri" id="btn1" disabled onclick="irA(2)">Siguiente →</button>
-      </div>
+      <div class="btns"><button class="b-pri" id="btn1" disabled onclick="irA(2)">Siguiente →</button></div>
     </div>
   </div>
 
-  <!-- PASO 2 -->
   <div class="pantalla" id="p2">
     <div class="card">
       <h2>Elige las carpetas</h2>
-      <p>¿Dónde están las fotos y dónde quieres guardar el resultado organizado?</p>
+      <p>¿Dónde están las fotos y dónde quieres guardar el resultado?</p>
       <div class="carpetas">
-        <div>
-          <div class="clabel">📁 Carpeta de fotos (origen)</div>
-          <div class="zona" id="zOrigen">
-            <div class="ic">📁</div>
-            <div class="zt">Elegir carpeta de fotos</div>
-            <div class="zs">Donde están las fotos del campo</div>
-          </div>
-        </div>
-        <div>
-          <div class="clabel">📂 Carpeta destino (resultado)</div>
-          <div class="zona" id="zDestino">
-            <div class="ic">📂</div>
-            <div class="zt">Elegir carpeta destino</div>
-            <div class="zs">Carpeta vacía donde se organizarán</div>
-          </div>
-        </div>
+        <div><div class="clabel">📁 Carpeta de fotos (origen)</div><div class="zona" id="zOrigen"><div class="ic">📁</div><div class="zt">Elegir carpeta de fotos</div><div class="zs">Donde están las fotos del campo</div></div></div>
+        <div><div class="clabel">📂 Carpeta destino (resultado)</div><div class="zona" id="zDestino"><div class="ic">📂</div><div class="zt">Elegir carpeta destino</div><div class="zs">Carpeta vacía donde se organizarán</div></div></div>
       </div>
-      <div class="btns">
-        <button class="b-sec" onclick="irA(1)">← Atrás</button>
-        <button class="b-pri" id="btn2" disabled onclick="irA(3);mostrarConfirmacion()">Siguiente →</button>
-      </div>
+      <div class="btns"><button class="b-sec" onclick="irA(1)">← Atrás</button><button class="b-pri" id="btn2" disabled onclick="irA(3);mostrarConfirmacion()">Siguiente →</button></div>
     </div>
   </div>
 
-  <!-- PASO 3 -->
   <div class="pantalla" id="p3">
     <div class="card">
       <h2>Listo para organizar</h2>
-      <p>Revisa el resumen y elige cómo manejar los archivos originales.</p>
+      <p>Revisa el resumen y elige cómo manejar los originales.</p>
       <div class="confirm-grid" id="confirmGrid"></div>
       <div class="clabel" style="margin-bottom:8px">¿Qué hacer con los archivos originales?</div>
       <div class="modos" id="modos">
@@ -232,86 +145,52 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
         <div class="modo" data-v="mover"><b>Mover</b><span>Más rápido con miles de fotos</span></div>
       </div>
       <button class="b-grande" id="btnSimular">👁 Simular primero (sin tocar archivos)</button>
-      <div style="text-align:center;font-size:12px;color:var(--gris);margin-top:6px">Ver el resultado antes de ejecutar de verdad</div>
-
+      <div style="text-align:center;font-size:11.5px;color:var(--gris);margin-top:5px">Ver el resultado antes de ejecutar de verdad</div>
       <div class="prog-wrap" id="progWrap">
-        <div class="prog-header">
-          <div class="prog-txt" id="progTxt">Procesando...</div>
-          <div class="prog-tiempo" id="tiempo-transcurrido"></div>
-        </div>
+        <div class="prog-header"><div class="prog-txt" id="progTxt"></div><div class="prog-tiempo" id="progTiempo"></div></div>
         <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
       </div>
-      <div class="pantalla-completado" id="pantalla-completado">
-        <span>🎉</span><div id="completado-msg"></div>
-      </div>
+      <div class="completado" id="completado"><span>🎉</span><div id="completado-msg"></div></div>
       <div class="logbox" id="logbox"></div>
-
-      <div class="btns">
-        <button class="b-sec" onclick="irA(2)">← Atrás</button>
-        <button class="b-pri" id="btnEjecutar" disabled>⚡ Ejecutar de verdad</button>
-      </div>
+      <div class="btns"><button class="b-sec" onclick="irA(2)">← Atrás</button><button class="b-pri" id="btnEjecutar" disabled>⚡ Ejecutar de verdad</button></div>
     </div>
   </div>
 
-  <!-- PASO 4 -->
   <div class="pantalla" id="p4">
     <div class="card">
-      <div class="res-header">
-        <h2 id="tituloRes">Resultado</h2>
+      <div class="dash-header">
+        <h2 id="tituloRes">Dashboard de cobertura</h2>
         <div class="desc-btns">
           <button class="b-desc teal" onclick="descargarResumen()">⬇ Resumen Excel</button>
-          <button class="b-desc" id="btnExcel">⬇ Conciliación Excel</button>
+          <button class="b-desc" id="btnExcel">⬇ Conciliación</button>
           <button class="b-desc" id="btnPDF">⬇ Informe PDF</button>
         </div>
       </div>
       <div id="avisos"></div>
       <div class="kpis" id="kpis"></div>
-
-      <!-- Controles de gráficos -->
-      <div class="graf-controles">
-        <label>Ver por:</label>
-        <select id="selDimension">
-          <option value="familia">Familia</option>
-          <option value="subfamilia">Subfamilia</option>
-          <option value="area">Área</option>
-          <option value="sede">Sede</option>
-          <option value="estado">Estado</option>
-          <option value="linea">Línea de producción</option>
-        </select>
-        <label>Tipo de gráfico:</label>
-        <select id="selGrafico">
+      <div class="dim-controls">
+        <label>Ver por dimensión:</label>
+        <div class="dtabs" id="dimTabs"></div>
+        <label style="margin-left:auto">Tipo de gráfico:</label>
+        <select id="selGrafico" onchange="document.querySelector('.dtab.activo')?.click()">
           <option value="barrasH">Barras horizontales</option>
           <option value="barrasV">Barras verticales</option>
           <option value="dona">Dona</option>
         </select>
       </div>
-
-      <div class="graficos">
-        <div class="gpanel"><div class="gtitle">Activos con / sin foto</div><canvas id="gEstado" width="240" height="220"></canvas></div>
-        <div class="gpanel"><div class="gtitle">Cobertura fotográfica</div><canvas id="gCobertura" width="580" height="220"></canvas></div>
+      <div class="graficos-grid">
+        <div class="gpanel"><div class="gtitle">Activos con / sin foto</div><canvas id="gDona" width="200" height="200"></canvas></div>
+        <div class="gpanel"><div class="gtitle">Distribución por dimensión seleccionada</div><canvas id="gPrincipal" width="680" height="200"></canvas></div>
       </div>
-
       <div class="tabla-wrap">
-        <table><thead><tr>
-          <th id="thDim">Familia</th>
-          <th class="r">Activos</th><th class="r">Con foto</th>
-          <th class="r">Sin foto</th><th class="r">Cobertura</th>
-        </tr></thead><tbody id="tbody"></tbody></table>
+        <table><thead><tr><th id="thDim">Dimensión</th><th class="r">Activos</th><th class="r">Con foto</th><th class="r">Sin foto</th><th class="r">Cobertura</th></tr></thead><tbody id="tbody"></tbody></table>
       </div>
-
-      <div style="margin-top:16px;text-align:center">
-        <button class="b-sec" onclick="irA(3)" style="font-size:13px">← Volver y ejecutar</button>
-      </div>
+      <div style="margin-top:14px;text-align:center"><button class="b-sec" onclick="irA(3)" style="font-size:12.5px">← Volver y ejecutar</button></div>
     </div>
   </div>
 </main>
 
-<div class="barra-fija" id="barraFija">
-  <div>
-    <div class="bf-txt">Simulación lista · <b id="bfResumen"></b></div>
-    <button class="b-pri" id="btnEjecutarBarra">⚡ Ejecutar de verdad</button>
-  </div>
-</div>
+<div class="barra-fija" id="barraFija"><div><div class="bf-txt">Simulación lista · <b id="bfResumen"></b></div><button class="b-pri" id="btnEjecutarBarra">⚡ Ejecutar de verdad</button></div></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/exceljs.min.js"></script>
