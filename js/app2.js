@@ -422,30 +422,14 @@ function pintarPanel(dim) {
   S.dimActiva = dim;
   const datos = S.datosDims[dim] || [];
   const label = DIMS.find((d) => d.v === dim)?.l || dim;
+  const tipo = $('selGrafico').value || 'barrasH';
   $('thDim').textContent = label;
   $('gPrincipalTit').textContent = `Activos por ${label.toLowerCase()}`;
-  const panel = $('panelPrincipal');
 
-  if (!datos.length) {
-    destruir('gPrincipal');
-    panel.classList.add('vacio');
-    $('panelPrincipal').querySelector('.gcanvas-wrap').innerHTML =
-      `<canvas id="gPrincipal" width="620" height="300" style="display:none"></canvas>
-       <div>Esta dimensión no está disponible en este inventario.</div>`;
-    $('tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--gris);padding:22px">Sin datos para <b>${esc(label)}</b> en este inventario.</td></tr>`;
-    $('resumenCards').innerHTML = '';
-    return;
-  }
-
-  panel.classList.remove('vacio');
-  // Reponer el canvas si venía del estado "vacío".
-  if (!$('gPrincipal') || $('gPrincipal').style.display === 'none') {
-    $('panelPrincipal').querySelector('.gcanvas-wrap').innerHTML =
-      '<canvas id="gPrincipal" width="620" height="300"></canvas>';
-  }
-
-  pintarGraficoDim('gPrincipal', datos, $('selGrafico').value || 'barrasH');
-  pintarTabla(datos);
+  // Si la dimensión no está en el inventario, el gráfico se muestra EN CERO
+  // (mismo formato que las demás, sin datos), no un mensaje.
+  pintarGraficoDim('gPrincipal', datos, tipo);
+  pintarTabla(datos, label);
   pintarCards(datos, label);
 }
 
@@ -474,14 +458,28 @@ function pintarGraficoDim(id, datos, tipo) {
   destruir(id);
   const canvas = $(id); if (!canvas) return;
   const top = datos.slice(0, 14);
-  const labels = top.map((d) => d.nombre);
-  const valores = top.map((d) => d.activos);
+  const vacio = top.length === 0;                    // dimensión no presente → en cero
+  const labels = vacio ? ['Sin dato'] : top.map((d) => d.nombre);
 
   if (tipo === 'dona') {
     S.charts[id] = new Chart(canvas.getContext('2d'), {
       type: 'doughnut', plugins: [fondoBlanco],
-      data: { labels, datasets: [{ data: valores, backgroundColor: PALETA.slice(0, top.length), borderWidth: 2, borderColor: '#fff' }] },
-      options: { ...BASE, cutout: '55%', plugins: { legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } } } },
+      data: {
+        labels,
+        datasets: [{
+          // Ring gris "en cero" cuando no hay datos.
+          data: vacio ? [1] : top.map((d) => d.activos),
+          backgroundColor: vacio ? ['#E2E8F0'] : PALETA.slice(0, top.length),
+          borderWidth: 2, borderColor: '#fff',
+        }],
+      },
+      options: {
+        ...BASE, cutout: '55%',
+        plugins: {
+          legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+          tooltip: { enabled: !vacio },
+        },
+      },
     });
     return;
   }
@@ -492,18 +490,18 @@ function pintarGraficoDim(id, datos, tipo) {
     data: {
       labels,
       datasets: [{
-        label: 'Activos', data: valores,
-        backgroundColor: top.map((_, i) => PALETA[i % PALETA.length]),
+        label: 'Activos', data: vacio ? [0] : top.map((d) => d.activos),
+        backgroundColor: vacio ? ['#E2E8F0'] : top.map((_, i) => PALETA[i % PALETA.length]),
         borderRadius: 4, barThickness: horizontal ? 14 : undefined, maxBarThickness: 34,
       }],
     },
     options: {
       ...BASE, indexAxis: horizontal ? 'y' : 'x',
       scales: {
-        x: { ticks: { font: { size: 10 }, color: '#475569', maxRotation: horizontal ? 0 : 40, autoSkip: false }, grid: { color: horizontal ? '#F1F5F9' : 'transparent' } },
-        y: { ticks: { font: { size: 10 }, color: '#475569', autoSkip: false }, grid: { color: horizontal ? 'transparent' : '#F1F5F9' } },
+        x: { beginAtZero: true, suggestedMax: vacio ? 1 : undefined, ticks: { font: { size: 10 }, color: '#475569', maxRotation: horizontal ? 0 : 40, autoSkip: false }, grid: { color: horizontal ? '#F1F5F9' : 'transparent' } },
+        y: { beginAtZero: true, suggestedMax: vacio && !horizontal ? 1 : undefined, ticks: { font: { size: 10 }, color: '#475569', autoSkip: false }, grid: { color: horizontal ? 'transparent' : '#F1F5F9' } },
       },
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${num(c.raw)} activos` } } },
+      plugins: { legend: { display: false }, tooltip: { enabled: !vacio, callbacks: { label: (c) => ` ${num(c.raw)} activos` } } },
     },
   });
 }
@@ -520,8 +518,18 @@ function pintarDonaCobertura(m) {
 }
 
 // ── Tabla ───────────────────────────────────────────────────
-function pintarTabla(datos) {
+function pintarTabla(datos, label) {
   const cls = (v, b, med) => (v < b ? 'bad' : v < med ? 'warn' : 'ok');
+  if (!datos.length) {
+    $('tbody').innerHTML = `<tr>
+      <td style="color:var(--gris)">Sin dato — ${esc(label || '')} no está en este inventario</td>
+      <td class="r" style="font-weight:700">0</td>
+      <td class="r">0.0%</td>
+      <td class="r">0</td>
+      <td class="r"><span class="pill bad">0.0%</span></td>
+    </tr>`;
+    return;
+  }
   $('tbody').innerHTML = datos.map((d) => `<tr>
     <td>${esc(d.nombre)}</td>
     <td class="r" style="font-weight:700">${num(d.activos)}</td>
@@ -533,6 +541,19 @@ function pintarTabla(datos) {
 
 // ── Cuadros resumen ─────────────────────────────────────────
 function pintarCards(datos, label) {
+  if (!datos.length) {
+    $('resumenCards').innerHTML = `
+      <div class="res-tit">Cuadros resumen — activos por ${esc(label.toLowerCase())}</div>
+      <div class="cards-grid">
+        <div class="rcard">
+          <div class="rcard-nombre">Sin dato</div>
+          <div class="rcard-nums"><span class="rcard-total">0 activos</span><span class="rcard-pct">0.0%</span></div>
+          <div class="rcard-bar-bg"><div class="rcard-bar-fill" style="width:0%"></div></div>
+          <div class="rcard-sub">Esta dimensión no está en este inventario</div>
+        </div>
+      </div>`;
+    return;
+  }
   const top = datos.slice(0, 12);
   const maxA = Math.max(...top.map((d) => d.activos), 1);
   $('resumenCards').innerHTML = `
@@ -594,10 +615,8 @@ async function descargarAnalisisExcel() {
     f.getCell(2).alignment = { horizontal: 'right' };
   });
 
-  DIMS.forEach((d) => {
-    const datos = S.datosDims[d.v] || [];
-    if (datos.length) hojaDim(wb, d.l, datos);
-  });
+  // Todas las dimensiones (las ausentes quedan en cero, como en el dashboard).
+  DIMS.forEach((d) => hojaDim(wb, d.l, S.datosDims[d.v] || []));
   await bajarWb(wb, `Analisis_${S.inv.nombre}.xlsx`);
 }
 
@@ -618,6 +637,10 @@ function hojaDim(wb, label, datos) {
   });
   h.height = 18;
   ws.views = [{ state: 'frozen', ySplit: 1 }];
+  if (!datos.length) {
+    ws.addRow({ n: 'Sin dato (dimensión no presente en el inventario)', a: 0, p: 0, c: 0, s: 0, cb: 0 });
+    return;
+  }
   datos.forEach((d) => ws.addRow({
     n: d.nombre, a: d.activos, p: +d.pctTotal.toFixed(1),
     c: d.conFoto, s: d.sinFoto, cb: +d.cobertura.toFixed(1),
@@ -670,48 +693,105 @@ async function descargarAnalisisPDF() {
   cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
   document.body.appendChild(cont);
 
+  // Renderiza un Chart en canvas oculto y devuelve su PNG.
+  const aPNG = async (w, h, cfg) => {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cont.appendChild(cv);
+    const ch = new Chart(cv.getContext('2d'), cfg);
+    await new Promise((r) => requestAnimationFrame(r));
+    const png = cv.toDataURL('image/png', 1);
+    ch.destroy();
+    return png;
+  };
+
   try {
+    // Gráfico global de cobertura (la dona que se ve en el dashboard).
+    doc.setFillColor(15, 118, 110); doc.rect(M, y - 4, 3, 6, 'F');
+    doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59);
+    doc.text('Cobertura fotográfica (global)', M + 6, y + 1);
+    y += 8;
+    const donaPng = await aPNG(460, 380, {
+      type: 'doughnut', plugins: [fondoBlanco],
+      data: { labels: ['Con foto', 'Sin foto'], datasets: [{ data: [m.activosConFoto, m.activosSinFoto], backgroundColor: ['#0F766E', '#CBD5E1'], borderWidth: 2, borderColor: '#fff' }] },
+      options: { ...BASE, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } } } },
+    });
+    doc.addImage(donaPng, 'PNG', (W - 62) / 2, y, 62, 51);
+    y += 58;
+
+    // Una sección por dimensión: TODAS se incluyen (las ausentes, en cero).
     for (const d of DIMS) {
       const datos = S.datosDims[d.v] || [];
-      if (!datos.length) continue;
-      if (y > 250) { doc.addPage(); y = 20; }
+      const vacio = !datos.length;
+      const top = datos.slice(0, 14);
 
+      if (y > 232) { doc.addPage(); y = 20; }
       doc.setFillColor(15, 118, 110); doc.rect(M, y - 4, 3, 6, 'F');
       doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59);
       doc.text(`Activos por ${d.l.toLowerCase()}`, M + 6, y + 1);
-      y += 8;
+      if (vacio) {
+        doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(148, 163, 184);
+        doc.text('No disponible en este inventario (0)', M + 6, y + 6);
+      }
+      y += vacio ? 11 : 8;
 
-      // Gráfico en canvas oculto
-      const cv = document.createElement('canvas'); cv.width = 900; cv.height = 460;
-      cont.appendChild(cv);
-      const top = datos.slice(0, 14);
-      const ch = new Chart(cv.getContext('2d'), {
+      // Gráfico (en cero si la dimensión no existe)
+      const png = await aPNG(900, 460, {
         type: 'bar', plugins: [fondoBlanco],
-        data: { labels: top.map((x) => x.nombre), datasets: [{ data: top.map((x) => x.activos), backgroundColor: top.map((_, i) => PALETA[i % PALETA.length]), borderRadius: 4 }] },
-        options: { ...BASE, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#475569' } }, y: { ticks: { color: '#475569', font: { size: 11 } } } } },
+        data: { labels: vacio ? ['Sin dato'] : top.map((x) => x.nombre), datasets: [{ data: vacio ? [0] : top.map((x) => x.activos), backgroundColor: vacio ? ['#E2E8F0'] : top.map((_, i) => PALETA[i % PALETA.length]), borderRadius: 4 }] },
+        options: { ...BASE, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, suggestedMax: vacio ? 1 : undefined, ticks: { color: '#475569' } }, y: { ticks: { color: '#475569', font: { size: 11 } } } } },
       });
-      await new Promise((r) => requestAnimationFrame(r));
-      const imgH = 58;
-      doc.addImage(cv.toDataURL('image/png', 1), 'PNG', M, y, W - M * 2, imgH);
-      ch.destroy();
+      const imgH = 56;
+      doc.addImage(png, 'PNG', M, y, W - M * 2, imgH);
       y += imgH + 4;
 
-      // Tabla top 12
+      // Tabla
       doc.autoTable({
         startY: y, margin: { left: M, right: M },
         head: [[d.l, 'Activos', '% total', 'Con foto', 'Cobertura']],
-        body: datos.slice(0, 12).map((x) => [x.nombre, num(x.activos), pct(x.pctTotal), num(x.conFoto), pct(x.cobertura)]),
+        body: vacio ? [['Sin dato', '0', '0.0%', '0', '0.0%']]
+                    : datos.slice(0, 12).map((x) => [x.nombre, num(x.activos), pct(x.pctTotal), num(x.conFoto), pct(x.cobertura)]),
         theme: 'grid', styles: { fontSize: 8, cellPadding: 1.8 },
         headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 8 },
         alternateRowStyles: { fillColor: [248, 250, 251] },
         columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
       });
-      y = doc.lastAutoTable.finalY + 12;
+      y = doc.lastAutoTable.finalY + 8;
+
+      // Cuadros resumen (tarjetas) — con salto de página si no caben.
+      const filasCards = Math.ceil(Math.min(datos.length || 1, 9) / 3);
+      const altoCards = 4 + filasCards * (19 + 4);
+      if (y + altoCards > 286) { doc.addPage(); y = 20; }
+      doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(100, 116, 139);
+      doc.text('CUADROS RESUMEN', M, y);
+      y = cardsPDF(doc, y + 3, datos, M, W) + 10;
     }
     descargar(doc.output('blob'), `Analisis_${S.inv.nombre}.pdf`);
   } finally {
     cont.remove();
   }
+}
+
+/** Dibuja los cuadros resumen (tarjetas) en el PDF; devuelve la nueva y. */
+function cardsPDF(doc, y, datos, M, W) {
+  const top = datos.length ? datos.slice(0, 9) : [{ nombre: 'Sin dato', activos: 0, pctTotal: 0 }];
+  const cols = 3, gap = 4, chh = 19;
+  const cw = (W - M * 2 - gap * (cols - 1)) / cols;
+  const maxA = Math.max(...top.map((d) => d.activos), 1);
+  top.forEach((d, i) => {
+    const x = M + (i % cols) * (cw + gap);
+    const yy = y + Math.floor(i / cols) * (chh + 4);
+    doc.setFillColor(241, 245, 249); doc.roundedRect(x, yy, cw, chh, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold').setFontSize(7.5).setTextColor(30, 41, 59);
+    doc.text(doc.splitTextToSize(String(d.nombre), cw - 6)[0], x + 3, yy + 6);
+    doc.setFont('helvetica', 'normal').setFontSize(7).setTextColor(100, 116, 139);
+    doc.text(`${num(d.activos)} activos`, x + 3, yy + 11);
+    doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(15, 118, 110);
+    doc.text(pct(d.pctTotal), x + cw - 3, yy + 11, { align: 'right' });
+    doc.setFillColor(226, 232, 240); doc.roundedRect(x + 3, yy + 13.5, cw - 6, 2.4, 1, 1, 'F');
+    doc.setFillColor(15, 118, 110);
+    doc.roundedRect(x + 3, yy + 13.5, Math.max(0.4, (cw - 6) * (d.activos / maxA)), 2.4, 1, 1, 'F');
+  });
+  return y + Math.ceil(top.length / cols) * (chh + 4);
 }
 
 // ── Utilidades ──────────────────────────────────────────────
