@@ -198,6 +198,31 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
   .kpis{grid-template-columns:repeat(2,1fr)}
   .hub-hero{padding:30px 24px}
 }
+
+/* ══ DEPURADOR ══ */
+.dep{max-width:1080px;margin:0 auto;padding:30px 24px 90px}
+.det-panel{margin-top:16px}
+.det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.det-row{background:var(--gris-100);border:1px solid var(--gris-200);border-radius:9px;padding:9px 11px}
+.det-row .dl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.det-row .dl .dot{width:7px;height:7px;border-radius:50%;background:var(--gris)}
+.det-row.hit .dl .dot{background:var(--verde)}
+.det-row.key .dl{color:var(--teal)}
+.det-row select{width:100%;padding:6px 8px;border:1px solid var(--gris-200);border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--slate)}
+.dep-tabsbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.q-list{display:flex;flex-direction:column;gap:8px}
+.q-row{display:grid;grid-template-columns:1fr 90px 130px;align-items:center;gap:10px;background:var(--blanco);border:1px solid var(--gris-200);border-radius:9px;padding:9px 13px}
+.q-row .qn{font-size:12.5px;font-weight:600;color:var(--slate)}
+.q-bar{height:8px;background:var(--gris-200);border-radius:4px;overflow:hidden}
+.q-bar-fill{height:100%;border-radius:4px}
+.q-bar-fill.ok{background:var(--teal)}.q-bar-fill.warn{background:var(--ambar)}.q-bar-fill.bad{background:var(--rojo)}
+.q-pct{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;text-align:right}
+.q-pct.ok{color:var(--teal)}.q-pct.warn{color:var(--ambar)}.q-pct.bad{color:var(--rojo)}
+.maestro-box{background:var(--teal-bg);border:1px solid var(--teal-100);border-radius:10px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.maestro-box .mtxt{font-size:12.5px;color:#115E59;flex:1;min-width:200px}
+.maestro-box .mtxt b{display:block;font-size:13px;color:var(--slate);margin-bottom:2px}
+.dep-search{padding:7px 11px;border:1px solid var(--gris-200);border-radius:7px;font-size:12.5px;font-family:'DM Sans',sans-serif;width:240px;max-width:100%}
+.mini-note{font-size:11.5px;color:var(--gris);margin-top:8px}
 </style>
 </head>
 <body>
@@ -406,6 +431,57 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
       <div class="bf-txt">Simulación lista · <b id="bfResumen"></b></div>
       <button class="b-pri" id="btnEjecutarBarra">⚡ Ejecutar de verdad</button>
     </div>
+  </div>
+</div>
+
+<!-- ════════════════ VISTA DEPURADOR DE BASES ════════════════ -->
+<div class="view" id="view-depurador">
+  <div class="dep">
+
+    <!-- Carga + detección -->
+    <div id="depUpload">
+      <div class="card">
+        <h2>Depurador de Bases</h2>
+        <p>Sube la base operativa (Excel/CSV). Detecto y normalizo las columnas, evalúo la calidad de los datos y valido marcas/modelos contra un maestro.</p>
+        <div class="zona" id="depZona">
+          <div class="ic">🧹</div>
+          <div class="zt">Haz clic o arrastra el Excel aquí</div>
+          <div class="zs">.xlsx · .xlsm · .xls · .csv</div>
+        </div>
+        <div class="drag-hint">💡 También puedes arrastrar el archivo directamente a esta área</div>
+        <input type="file" id="depFile" accept=".xlsx,.xlsm,.xls,.csv" hidden>
+
+        <div class="det-panel" id="depDetect" style="display:none">
+          <div style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">
+            Columnas detectadas — corrige si algo quedó mal
+          </div>
+          <div class="det-grid" id="depDetGrid"></div>
+          <div id="depDetAviso"></div>
+          <div class="btns">
+            <button class="b-pri" id="depProcesar" disabled>Procesar y depurar →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="depDash" style="display:none">
+      <div class="card">
+        <div class="dash-header">
+          <h2 id="depTitulo">Base depurada</h2>
+          <div class="desc-btns">
+            <button class="b-desc teal" id="depXlsClean">⬇ Excel depurado</button>
+            <button class="b-desc teal" id="depXlsCalidad">⬇ Excel calidad + alertas</button>
+            <button class="b-desc" id="depPdf">⬇ Informe PDF</button>
+            <button class="b-desc" id="depReset">↻ Otra base</button>
+          </div>
+        </div>
+        <div class="kpis" id="depKpis"></div>
+        <div class="dep-tabsbar" id="depTabs"></div>
+        <div id="depPanel"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 

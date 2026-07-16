@@ -24,6 +24,7 @@ import {
 } from './motor.js';
 import { soportado, pedirCarpeta, escanearFotos, ejecutarPlan, guardarEnDestino } from './archivos.js';
 import { generarExcel, generarPDF, graficoEstado, graficoCobertura } from './reportes.js';
+import { Depurador } from './depurador.js';
 
 // ── Helpers cortos ──────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -69,8 +70,8 @@ const IC = {
 const TOOLS = [
   { id: 'organizador', on: true,  icon: IC.camara,   name: 'Organizador Fotográfico',
     desc: 'Empareja y clasifica las fotos del inventario por código de activo, con dashboard y reportes.' },
-  { id: 'depurador',   on: false, icon: IC.datos,    name: 'Depurador de Bases',
-    desc: 'Limpia y normaliza bases operativas y arma los cuadros para el informe.' },
+  { id: 'depurador',   on: true,  icon: IC.datos,    name: 'Depurador de Bases',
+    desc: 'Limpia y normaliza bases operativas, evalúa calidad de datos y valida marcas/modelos.' },
   { id: 'proyectos',   on: false, icon: IC.proyecto, name: 'Gestor de Proyectos de Inventario',
     desc: 'Planifica y ejecuta los proyectos de levantamiento de activos en campo.' },
   { id: 'entregables', on: false, icon: IC.entrega,  name: 'Generador de Entregables',
@@ -100,18 +101,24 @@ function pintarHub() {
 function abrirHerramienta(id) {
   const tool = TOOLS.find((t) => t.id === id);
   if (!tool || !tool.on) return;
-  $('view-hub').classList.remove('visible');
-  $('view-organizador').classList.add('visible');
+  document.querySelectorAll('.view').forEach((v) => v.classList.remove('visible'));
   $('hBack').style.display = 'flex';
   $('hTool').style.display = 'inline';
   $('hTool').textContent = tool.name;
-  // Compatibilidad: el organizador necesita la File System Access API.
-  if (!soportado()) { $('orgApp').style.display = 'none'; $('nocompat').style.display = 'grid'; }
-  else { $('orgApp').style.display = 'block'; $('nocompat').style.display = 'none'; }
+
+  if (id === 'organizador') {
+    $('view-organizador').classList.add('visible');
+    // Compatibilidad: el organizador necesita la File System Access API.
+    if (!soportado()) { $('orgApp').style.display = 'none'; $('nocompat').style.display = 'grid'; }
+    else { $('orgApp').style.display = 'block'; $('nocompat').style.display = 'none'; }
+  } else if (id === 'depurador') {
+    $('view-depurador').classList.add('visible');
+    Depurador.init();   // idempotente
+  }
   window.scrollTo({ top: 0 });
 }
 function volverHub() {
-  $('view-organizador').classList.remove('visible');
+  document.querySelectorAll('.view').forEach((v) => v.classList.remove('visible'));
   $('view-hub').classList.add('visible');
   $('hBack').style.display = 'none';
   $('hTool').style.display = 'none';
