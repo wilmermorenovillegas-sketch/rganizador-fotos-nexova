@@ -28,28 +28,29 @@ const GRIS = '#CBD5E1';
 
 /** Campos canónicos y sus pistas de detección (genéricos, multi-base). */
 const CAMPOS = [
-  { k: 'codigo',       l: 'Código',          key: true, hints: ['barnueva', 'barnue', 'codigo inventario', 'codigo activo', 'codigo interno', 'codigo', 'cod', 'placa', 'etiqueta', 'id activo', 'correlativo'] },
-  { k: 'descripcion',  l: 'Descripción',     hints: ['desccatalogo', 'descripcion del activo', 'descripcion', 'denominacion', 'detalle', 'bien', 'nombre', 'articulo'] },
+  { k: 'codigo',       l: 'Código',          key: true, hints: ['codigo inventario', 'codigo del activo', 'codigo activo', 'codigo del bien', 'codigo bien', 'codigo patrimonial', 'codigo interno', 'codigo de barra', 'codigo barra', 'barnueva', 'barnue', 'barcode', 'placa', 'etiqueta', 'correlativo', 'id activo', 'codigo', 'cod'] },
+  { k: 'descripcion',  l: 'Descripción',     hints: ['descripcion del activo', 'descripcion del bien', 'descripcion catalogo', 'desccatalogo', 'descripcion bien', 'denominacion', 'descripcion', 'nombre del activo', 'articulo'] },
   { k: 'sede',         l: 'Sede',            hints: ['sede', 'sucursal', 'local', 'establecimiento'] },
   { k: 'area',         l: 'Área',            hints: ['area', 'área'] },
-  { k: 'cod_ubic',     l: 'Cód. Ubicación',  hints: ['codubicacion', 'cod ubicacion', 'codigo ubicacion'] },
-  { k: 'ubicacion',    l: 'Ubicación',       hints: ['descubicacion', 'desc ubicacion', 'descripcion ubicacion', 'ubicacion'] },
-  { k: 'cod_centro',   l: 'Cód. Centro Costo', hints: ['codcentrocosto', 'cod centro costo', 'codigo centro costo'] },
-  { k: 'centro',       l: 'Centro de costo', hints: ['desccentrocosto', 'desc centro costo', 'centro de costo', 'centro costo', 'cco'] },
-  { k: 'cod_resp',     l: 'Cód. Responsable', hints: ['codresponsable', 'cod responsable', 'codigo responsable'] },
-  { k: 'responsable',  l: 'Responsable',     hints: ['descresponsable', 'desc responsable', 'responsable', 'custodio', 'usuario', 'asignado'] },
-  { k: 'cod_familia',  l: 'Cód. Familia',    hints: ['codfamilia', 'cod familia', 'codigo familia'] },
-  { k: 'familia',      l: 'Familia',         hints: ['descfamilia', 'desc familia', 'descripcion de familia', 'familia', 'grupo', 'rubro', 'clase', 'categoria'] },
-  { k: 'cod_catalogo', l: 'Cód. Catálogo',   hints: ['codcatalogo', 'cod catalogo', 'codigo catalogo', 'codigo de catalogo'] },
+  { k: 'cod_ubic',     l: 'Cód. Ubicación',  hints: ['codigo ubicacion', 'cod ubicacion', 'codubicacion'] },
+  { k: 'ubicacion',    l: 'Ubicación',       hints: ['descripcion ubicacion', 'desc ubicacion', 'descubicacion', 'ubicacion', 'ambiente'] },
+  { k: 'cod_centro',   l: 'Cód. Centro Costo', hints: ['codigo centro costo', 'codigo ccosto', 'cod centro costo', 'cod ccosto', 'codccosto', 'codcentrocosto'] },
+  { k: 'centro',       l: 'Centro de costo', hints: ['descripcion centro costo', 'descripcion ccosto', 'desc centro costo', 'desccentrocosto', 'descccosto', 'centro de costo', 'centro costo', 'ccosto', 'cco'] },
+  { k: 'cod_resp',     l: 'Cód. Responsable', hints: ['codigo responsable', 'cod responsable', 'codresponsable'] },
+  { k: 'responsable',  l: 'Responsable',     hints: ['descripcion responsable', 'desc responsable', 'descresponsable', 'responsable', 'custodio', 'usuario asignado', 'asignado'] },
+  { k: 'cod_familia',  l: 'Cód. Familia',    hints: ['codigo familia', 'cod familia', 'codfamilia'] },
+  { k: 'familia',      l: 'Familia',         hints: ['descripcion familia', 'descripcion de familia', 'desc familia', 'descfamilia', 'familia', 'grupo', 'rubro', 'clase', 'categoria'] },
+  { k: 'cod_catalogo', l: 'Cód. Catálogo',   hints: ['codigo catalogo', 'codigo de catalogo', 'cod catalogo', 'codcatalogo'] },
+  { k: 'cod_linea',    l: 'Cód. Línea',      hints: ['codigo linea produccion', 'cod linea produccion', 'codigo linea', 'cod linea', 'codlineaproduccion'] },
+  { k: 'linea',        l: 'Línea',           hints: ['descripcion linea produccion', 'desc linea produccion', 'descripcion linea', 'linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
   { k: 'marca',        l: 'Marca',           hints: ['marca', 'fabricante', 'brand'] },
   { k: 'modelo',       l: 'Modelo',          hints: ['modelo', 'model'] },
-  { k: 'serie',        l: 'Nro. Serie',      hints: ['nro serie', 'numero de serie', 'n serie', 'serie', 'serial'] },
+  { k: 'serie',        l: 'Nro. Serie',      hints: ['nro serie', 'numero de serie', 'nro de serie', 'n serie', 'serie', 'serial'] },
   { k: 'medidas',      l: 'Medidas',         hints: ['medidas', 'medida', 'dimensiones', 'lxaxh'] },
   { k: 'capacidad',    l: 'Capacidad',       hints: ['capacidad', 'capac'] },
   { k: 'color',        l: 'Color',           hints: ['color'] },
-  { k: 'estado',       l: 'Estado',          hints: ['estado conservacion', 'estado de conservacion', 'estado', 'condicion', 'situacion'] },
+  { k: 'estado',       l: 'Estado',          hints: ['estado de conservacion', 'estado conservacion', 'estado operacion', 'estado_operacion', 'estado', 'condicion', 'situacion'] },
   { k: 'detalle',      l: 'Detalle técnico', hints: ['detalle tecnico', 'detalle técnico', 'ficha tecnica', 'especificaciones', 'detalle'] },
-  { k: 'linea',        l: 'Línea',           hints: ['linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
   { k: 'observacion',  l: 'Observaciones',   hints: ['observaciones', 'observacion', 'nota', 'glosa'] },
 ];
 // Dimensiones para los cuadros resumen (se muestran las detectadas, en orden).
@@ -100,6 +101,42 @@ function reset() {
   z.querySelector('.zs').textContent = '.xlsx · .xlsm · .xls · .csv';
 }
 
+// Compara ignorando acentos, espacios y símbolos ("Cod. Ubicación" → "CODUBICACION").
+const clave = (s) => normalizar(s).replace(/[^A-Z0-9]/g, '');
+
+/**
+ * Detección por puntaje: exacto (1000) > empieza-con (650) > contenido (300),
+ * con desempate por orden de la pista. Luego asignación global greedy: cada
+ * columna se usa una sola vez, así "codigo" no se roba "CodigoUbicacion".
+ */
+function detectarColumnas(headers) {
+  const H = headers.map((h) => ({ raw: h, key: clave(h) }));
+  const cands = [];
+  CAMPOS.forEach((campo) => {
+    campo.hints.forEach((hint, hi) => {
+      const hk = clave(hint);
+      if (!hk) return;
+      H.forEach((h) => {
+        if (!h.key) return;
+        let score = 0;
+        if (h.key === hk) score = 1000 - hi;
+        else if (h.key.startsWith(hk)) score = 650 - hi - (h.key.length - hk.length);
+        else if (hk.startsWith(h.key)) score = 480 - hi - (hk.length - h.key.length);
+        else if (h.key.includes(hk)) score = 300 - hi - (h.key.length - hk.length);
+        if (score > 0) cands.push({ k: campo.k, header: h.raw, score });
+      });
+    });
+  });
+  cands.sort((a, b) => b.score - a.score);
+  const cols = {}; const usadaH = new Set(); const usadaK = new Set();
+  cands.forEach((c) => {
+    if (usadaK.has(c.k) || usadaH.has(c.header)) return;
+    cols[c.k] = c.header; usadaK.add(c.k); usadaH.add(c.header);
+  });
+  CAMPOS.forEach((c) => { if (!(c.k in cols)) cols[c.k] = ''; });
+  return cols;
+}
+
 // ── 1) Leer base y detectar columnas ────────────────────────
 async function leerBase(archivo) {
   if (!archivo) return;
@@ -126,15 +163,9 @@ async function leerBase(archivo) {
     }
     D.nombre = archivo.name.replace(/\.[^.]+$/, '');
 
-    // Detección automática por pistas, evitando asignar la misma columna 2 veces.
-    D.cols = {};
-    const usadas = new Set();
-    CAMPOS.forEach((c) => {
-      let hit = adivinarColumna(D.headers, c.hints) || '';
-      if (hit && usadas.has(hit)) hit = '';
-      D.cols[c.k] = hit;
-      if (hit) usadas.add(hit);
-    });
+    // Detección automática por puntaje (exacto > prefijo > contiene), con
+    // asignación global sin colisiones: cada columna va a un solo campo.
+    D.cols = detectarColumnas(D.headers);
 
     const z = $('depZona');
     z.classList.add('ok');
