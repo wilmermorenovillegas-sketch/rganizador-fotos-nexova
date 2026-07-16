@@ -16,6 +16,7 @@
  * ============================================================================
  */
 import { celdaATexto, normalizar, detectarFilaEncabezado, adivinarColumna } from './motor.js';
+import { LOGO_AQUARIUS } from './logo-aquarius.js';
 
 const $ = (id) => document.getElementById(id);
 const num = (n) => (+n || 0).toLocaleString('es-PE');
@@ -51,20 +52,30 @@ const CAMPOS = [
   { k: 'medidas',      l: 'Medidas',         hints: ['medidas', 'medida', 'dimensiones', 'lxaxh'] },
   { k: 'capacidad',    l: 'Capacidad',       hints: ['capacidad', 'capac'] },
   { k: 'color',        l: 'Color',           hints: ['color'] },
-  { k: 'estado',       l: 'Estado',          hints: ['estado de conservacion', 'estado conservacion', 'estado operacion', 'estado_operacion', 'estado', 'condicion', 'situacion'] },
+  { k: 'estado',       l: 'Estado',          hints: ['estado de conservacion', 'estado conservacion', 'est conservacion', 'est de conservacion', 'estado operacion', 'estado_operacion', 'est con', 'estcon', 'est cons', 'est_con', 'estado', 'condicion', 'situacion'] },
   { k: 'detalle',      l: 'Detalle técnico', hints: ['detalle tecnico', 'detalle técnico', 'ficha tecnica', 'especificaciones', 'detalle'] },
   { k: 'observacion',  l: 'Observaciones',   hints: ['observaciones', 'observacion', 'nota', 'glosa'] },
 ];
 // Dimensiones para los cuadros resumen (se muestran las detectadas, en orden).
 const DIMS_CUADROS = ['sede', 'area', 'centro', 'responsable', 'familia', 'estado', 'ubicacion', 'linea'];
-// Campos cuyo texto se pasa a MAYÚSCULAS al depurar.
-const A_MAYUS = new Set(['marca', 'modelo', 'serie', 'color']);
+// Orden fijo de columnas para el reporte/Excel depurado.
+const ORDEN = ['cod_ubic', 'ubicacion', 'cod_centro', 'centro', 'cod_resp', 'responsable',
+  'cod_linea', 'linea', 'bar_antigua', 'bar_padre', 'codigo', 'cod_catalogo', 'descripcion',
+  'marca', 'modelo', 'serie', 'medidas', 'capacidad', 'color', 'estado', 'detalle', 'observacion'];
+/** Campos detectados en el orden pedido; los no listados (sede/área/familia…) van al final. */
+function camposOrdenados() {
+  const det = CAMPOS.filter((c) => D.cols[c.k]);
+  const enOrden = ORDEN.map((k) => det.find((c) => c.k === k)).filter(Boolean);
+  const extra = det.filter((c) => !ORDEN.includes(c.k));
+  return enOrden.concat(extra);
+}
 
 const D = {
   raw: [], headers: [], cols: {}, clean: [], nombre: '',
   maestro: null, alertas: [], M: {}, tab: 'resumen',
 };
 const CH = {};
+const tipoDim = {};   // tipo de gráfico elegido por dimensión
 let inicializado = false;
 
 // ════════════════════════════════════════════════════════════
@@ -212,22 +223,35 @@ function revisarProcesable() {
 // ── 2) Depurar ──────────────────────────────────────────────
 const gv = (row, k) => (D.cols[k] ? celdaATexto(row[D.cols[k]]) : '');
 
-function tituloCaso(s) {
-  return String(s).toLowerCase().replace(/(^|\s|\(|\/|-)\S/g, (a) => a.toUpperCase());
+// Alias frecuentes → forma estándar (correcciones seguras de datos conocidos).
+const COLOR_ALIAS = { 'PLOMO': 'GRIS', 'GRIS PLOMO': 'GRIS', 'GRISS': 'GRIS', 'BLANCA': 'BLANCO', 'NEGRA': 'NEGRO', 'CREMA CLARO': 'CREMA' };
+const MARCA_ALIAS = { 'HEWLETT PACKARD': 'HP', 'HEWLETT-PACKARD': 'HP', 'H P': 'HP', 'SANSUNG': 'SAMSUNG', 'SANSUMG': 'SAMSUNG', 'SAMSUMG': 'SAMSUNG' };
+
+const limpiar = (s) => String(s).replace(/\s+/g, ' ').trim().toUpperCase();
+function normMedidas(v) {
+  let s = limpiar(v);
+  s = s.replace(/(\d)\s*,\s*(\d)/g, '$1.$2');   // coma decimal → punto
+  s = s.replace(/\s*[x×*]\s*/gi, ' X ');         // separadores → X
+  return s.replace(/\s+/g, ' ').trim();
+}
+/** Depura una celda: MAYÚSCULAS, sin espacios extra, medidas/color/marca estandarizados. */
+function depurarCampo(k, v0) {
+  if (typeof v0 !== 'string') return v0;
+  let s = v0.replace(/\s+/g, ' ').trim();
+  if (k === 'medidas') return normMedidas(s);
+  s = s.toUpperCase().replace(/[;,]+$/, '').trim();
+  if (k === 'color') s = COLOR_ALIAS[s] || s;
+  else if (k === 'marca') s = MARCA_ALIAS[s] || s;
+  return s;
 }
 
 function procesar() {
   D.clean = D.raw.map((row) => {
     const r = { _ch: 0 };
     CAMPOS.forEach((c) => {
-      let v = gv(row, c.k);
-      if (typeof v === 'string') {
-        const o = v;
-        v = v.trim().replace(/\s+/g, ' ');
-        if (c.k === 'descripcion') v = tituloCaso(v);
-        else if (A_MAYUS.has(c.k)) v = v.toUpperCase();
-        if (v !== o) r._ch++;
-      }
+      const o = gv(row, c.k);
+      const v = depurarCampo(c.k, o);
+      if (typeof o === 'string' && v !== o) r._ch++;
       r[c.k] = v;
     });
     return r;
@@ -344,15 +368,26 @@ function panelCuadros() {
     $('depPanel').innerHTML = `<div class="aviso warn"><span>ℹ️</span><div>No se detectaron dimensiones para resumir (Sede, Área, Centro de costo, Responsable…). Revisa el mapeo de columnas.</div></div>`;
     return;
   }
+  const op = (v, sel, t) => `<option value="${v}"${sel === v ? ' selected' : ''}>${t}</option>`;
   $('depPanel').innerHTML = `<div class="cuadros-wrap">${dims.map((k) => {
     const label = CAMPOS.find((c) => c.k === k).l;
     const { total, arr, list, extra } = cuadroData(k);
+    const tipo = tipoDim[k] || 'dona';
     return `<div class="cuadro">
-      <div class="cuadro-head">Activos por ${esc(label.toLowerCase())} <span class="cuadro-tot">${num(arr.length)} ${arr.length === 1 ? 'categoría' : 'categorías'}</span></div>
+      <div class="cuadro-head">
+        <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}</span>
+        <span class="cuadro-tot">${num(arr.length)} ${arr.length === 1 ? 'categoría' : 'categorías'} · ${num(total)} activos</span>
+        <select class="cuadro-tipo" data-k="${k}">
+          ${op('dona', tipo, '◕ Dona')}${op('polar', tipo, '✳ Área polar')}${op('semi', tipo, '◗ Semicírculo')}
+        </select>
+      </div>
       <div class="cuadro-body">
-        <div class="cuadro-graf"><canvas id="cq_${k}" width="200" height="200"></canvas>
-          <div class="cuadro-center"><b>${num(total)}</b><span>activos</span></div></div>
-        <div class="cuadro-rank">
+        <div class="cuadro-graf-box">
+          <div class="cuadro-graf"><canvas id="cq_${k}" width="280" height="280"></canvas>
+            <div class="cuadro-center"><b>${num(total)}</b><span>activos</span></div></div>
+        </div>
+        <div class="cuadro-rank-box">
+          <div class="rank-tit">Ranking — de mayor a menor</div>
           ${list.map((it) => `<div class="rk-row">
             <span class="rk-n">${it.n}</span><span class="rk-sw" style="background:${it.color}"></span>
             <span class="rk-name" title="${esc(it.nombre)}">${esc(it.nombre)}</span>
@@ -364,7 +399,10 @@ function panelCuadros() {
       </div>
     </div>`;
   }).join('')}</div>`;
-  dims.forEach((k) => donaCuadro(`cq_${k}`, cuadroData(k).slices));
+  dims.forEach((k) => renderCuadroChart(k, tipoDim[k] || 'dona'));
+  $('depPanel').querySelectorAll('.cuadro-tipo').forEach((s) => {
+    s.onchange = () => { tipoDim[s.dataset.k] = s.value; renderCuadroChart(s.dataset.k, s.value); };
+  });
 }
 
 function panelCalidad() {
@@ -394,11 +432,30 @@ function panelCalidad() {
     ${M.sinCodigo ? `<div class="aviso warn" style="margin-top:12px"><span>⚠️</span><div><b>${num(M.sinCodigo)} registros sin código.</b> No podrán identificarse de forma única.</div></div>` : ''}`;
 }
 
+/** Marcas distintas detectadas en la base, con su estado frente al maestro. */
+function marcasDetectadas() {
+  const m = new Map();
+  D.clean.forEach((r) => {
+    const v = String(r.marca ?? '').trim(); if (!v) return;
+    const key = normalizar(v);
+    if (!m.has(key)) m.set(key, { marca: v, veces: 0 });
+    m.get(key).veces++;
+  });
+  return [...m.values()]
+    .map((x) => ({ ...x, registrada: D.maestro ? D.maestro.has(normalizar(x.marca)) : false }))
+    .sort((a, b) => b.veces - a.veces);
+}
+
 function panelMM() {
   const M = D.M;
+  const marcas = marcasDetectadas();
+  const noReg = marcas.filter((x) => !x.registrada);
   const estado = D.maestro
     ? `<b>Maestro cargado</b>${num(D.maestro.size)} marcas registradas · valida contra el catálogo`
-    : `<b>Sin maestro cargado</b>Solo se cuentan los activos con marca/modelo vacío. Carga un maestro para validar contra el catálogo.`;
+    : `<b>Sin maestro cargado</b>Aún no subes el catálogo, así que el 100% de las marcas figuran como no registradas. Carga un maestro para validar.`;
+  const resumenMarcas = D.maestro
+    ? `${num(noReg.length)} de ${num(marcas.length)} no registradas`
+    : `${num(marcas.length)} marcas · 100% no registradas (sin maestro)`;
   $('depPanel').innerHTML = `
     <div class="maestro-box">
       <div class="mtxt">${estado}</div>
@@ -406,17 +463,30 @@ function panelMM() {
       <button class="b-desc teal" id="btnMaestro">⬆ Cargar maestro (Excel/JSON)</button>
       ${D.maestro ? '<button class="b-desc" id="btnMaestroClr">Quitar</button>' : ''}
     </div>
-    <div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+    <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+      ${kpi('Marcas distintas', num(marcas.length), 'b')}
       ${kpi('Marca/modelo OK', num(M.mmOk), 'ok')}
       ${kpi('Con campo vacío', num(M.alertasVacio), M.alertasVacio ? 'warn' : 'ok')}
-      ${kpi('No registrados', num(M.alertasNoReg), M.alertasNoReg ? 'warn' : 'ok')}
+      ${kpi('No registradas', num(noReg.length), noReg.length ? 'warn' : 'ok')}
     </div>
-    <div class="aviso ${D.alertas.length ? 'warn' : ''}" style="${D.alertas.length ? '' : 'display:none'}">
-      <span>⚠️</span><div><b>${num(D.alertas.length)} activos sin marca/modelo registrado.</b> El detalle no se muestra aquí; descárgalo cuando lo necesites.</div>
+    <div class="res-tit" style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Marcas detectadas — ${resumenMarcas}</div>
+    <div class="tabla-wrap">
+      <div style="max-height:360px;overflow:auto"><table><thead><tr>
+        <th style="width:36px">N°</th><th>Marca</th><th class="r">Activos</th><th>Estado</th>
+      </tr></thead><tbody>
+        ${marcas.slice(0, 30).map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.marca)}</td><td class="r">${num(x.veces)}</td>
+          <td><span class="pill ${x.registrada ? 'ok' : 'bad'}">${x.registrada ? 'Registrada' : 'No registrada'}</span></td></tr>`).join('')
+          || `<tr><td colspan="4" style="text-align:center;color:var(--gris);padding:16px">No hay marcas en la base.</td></tr>`}
+      </tbody></table></div>
     </div>
-    <div><button class="b-desc teal" id="btnAlertasXls" ${D.alertas.length ? '' : 'disabled'}>⬇ Descargar activos sin marca/modelo (Excel)</button></div>`;
+    <div class="mini-note">${marcas.length > 30 ? `Se muestran 30 de ${num(marcas.length)}. ` : ''}Descarga el detalle completo abajo.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="b-desc teal" id="btnMarcasXls" ${marcas.length ? '' : 'disabled'}>⬇ Marcas detectadas (Excel)</button>
+      <button class="b-desc" id="btnAlertasXls" ${D.alertas.length ? '' : 'disabled'}>⬇ Activos sin marca/modelo (Excel)</button>
+    </div>`;
   $('btnMaestro').onclick = () => $('depMaestro').click();
   $('depMaestro').onchange = (e) => cargarMaestro(e.target.files[0]);
+  $('btnMarcasXls').onclick = exportarMarcasExcel;
   $('btnAlertasXls').onclick = exportarAlertasExcel;
   if (D.maestro) $('btnMaestroClr').onclick = () => { D.maestro = null; validarMM(); calcularMetricas(); pintarTabs(); irTab('mm'); };
 }
@@ -503,13 +573,34 @@ const etiquetas = {
 
 function destruirCharts() { for (const k in CH) { CH[k]?.destroy?.(); delete CH[k]; } }
 
-function donaCuadro(id, slices) {
+/** Renderiza el gráfico de un cuadro en el tipo elegido: dona, área polar o semicírculo. */
+function renderCuadroChart(k, tipo) {
+  const id = `cq_${k}`;
+  if (CH[id]) { CH[id].destroy(); delete CH[id]; }
   const cv = $(id); if (!cv) return;
-  CH[id] = new Chart(cv.getContext('2d'), {
-    type: 'doughnut', plugins: [fondoBlanco, etiquetas],
-    data: { labels: slices.map((s) => s.nombre), datasets: [{ data: slices.map((s) => s.veces), backgroundColor: slices.map((s) => s.color), borderWidth: 2, borderColor: '#fff' }] },
-    options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${num(c.raw)}` } } } },
-  });
+  const { slices } = cuadroData(k);
+  const labels = slices.map((s) => s.nombre);
+  const data = slices.map((s) => s.veces);
+  const colors = slices.map((s) => s.color);
+  const common = { responsive: false, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${num(c.raw)}` } } } };
+  let cfg;
+  if (tipo === 'polar') {
+    cfg = { type: 'polarArea', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, backgroundColor: colors.map((c) => c + 'D0'), borderColor: '#fff', borderWidth: 1 }] },
+      options: { ...common, scales: { r: { ticks: { display: false }, grid: { color: '#EEF2F6' }, angleLines: { color: '#EEF2F6' } } } } };
+  } else if (tipo === 'semi') {
+    cfg = { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+      options: { ...common, rotation: -90, circumference: 180, cutout: '55%' } };
+  } else {
+    cfg = { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+      options: { ...common, cutout: '58%' } };
+  }
+  CH[id] = new Chart(cv.getContext('2d'), cfg);
+  const center = cv.parentElement.querySelector('.cuadro-center');
+  if (center) center.style.display = (tipo === 'dona') ? 'flex' : 'none';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -527,15 +618,52 @@ function styleHead(row) {
 
 async function exportarExcelDepurado() {
   if (!D.clean.length) { alert('Primero procesa una base.'); return; }
-  const cols = CAMPOS.filter((c) => D.cols[c.k]);
+  const cols = camposOrdenados();
+  const lastCol = cols.length + 1;
+  const HROW = 6;                                   // fila de cabeceras de la tabla
   const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
-  const ws = wb.addWorksheet('BASE DEPURADA');
-  ws.columns = [{ header: 'N°', key: '_n', width: 6 }].concat(cols.map((c) => ({ header: c.l, key: c.k, width: Math.max(12, Math.min(40, c.l.length + 8)) })));
+  const ws = wb.addWorksheet('INVENTARIO FISICO', { views: [{ state: 'frozen', ySplit: HROW }] });
+
+  ws.getColumn(1).width = 7;
+  cols.forEach((c, i) => { ws.getColumn(i + 2).width = Math.max(12, Math.min(42, c.l.length + 8)); });
+
+  // ── Cabecera de marca (filas 1-5) ──
+  try {
+    const ext = LOGO_AQUARIUS.slice(11, LOGO_AQUARIUS.indexOf(';'));   // "jpeg" / "png"
+    const imgId = wb.addImage({ base64: LOGO_AQUARIUS.split(',')[1], extension: ext === 'jpg' ? 'jpeg' : ext });
+    ws.addImage(imgId, { tl: { col: 0.15, row: 0.2 }, ext: { width: 150, height: 82 } });
+  } catch { /* sin logo */ }
+  const banner = (row, text, font) => {
+    ws.mergeCells(row, 3, row, Math.max(4, lastCol));
+    const c = ws.getCell(row, 3); c.value = text; c.font = font; c.alignment = { vertical: 'middle' };
+  };
+  banner(2, 'INVENTARIO FÍSICO DEL ACTIVO FIJO', { bold: true, size: 16, color: { argb: 'FF0F2B47' } });
+  banner(3, (D.nombre || '').toUpperCase(), { size: 11, color: { argb: 'FF5A6B7E' } });
+  banner(4, `${num(D.M.total)} ACTIVOS INVENTARIADOS`, { bold: true, size: 12, color: { argb: 'FF1E5A8E' } });
+  banner(5, 'ATF-PR-01-FO-03 / VER.02   ·   DEPURADO CON NEXOVA SUITE', { size: 9, color: { argb: 'FF8899AA' } });
+
+  // ── Cabecera de la tabla (MAYÚSCULAS) ──
+  const hr = ws.getRow(HROW);
+  hr.values = ['N°'].concat(cols.map((c) => c.l.toUpperCase()));
+  styleHead(hr);
+  ws.autoFilter = { from: { row: HROW, column: 1 }, to: { row: HROW, column: lastCol } };
+
+  // ── Datos (ya vienen en MAYÚSCULAS de la depuración) ──
+  D.clean.forEach((r, i) => ws.addRow([i + 1].concat(cols.map((c) => r[c.k] ?? ''))));
+
+  bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Inventario_Depurado_${D.nombre}.xlsx`);
+}
+
+async function exportarMarcasExcel() {
+  const marcas = marcasDetectadas();
+  if (!marcas.length) { alert('No hay marcas para exportar.'); return; }
+  const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
+  const ws = wb.addWorksheet('MARCAS DETECTADAS');
+  ws.columns = [{ header: 'N°', key: 'n', width: 6 }, { header: 'MARCA', key: 'm', width: 32 }, { header: 'ACTIVOS', key: 'a', width: 12 }, { header: 'ESTADO', key: 'e', width: 18 }];
   styleHead(ws.getRow(1));
   ws.views = [{ state: 'frozen', ySplit: 1 }];
-  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length + 1 } };
-  D.clean.forEach((r, i) => { const o = { _n: i + 1 }; cols.forEach((c) => { o[c.k] = r[c.k]; }); ws.addRow(o); });
-  bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Base_Depurada_${D.nombre}.xlsx`);
+  marcas.forEach((x, i) => ws.addRow({ n: i + 1, m: x.marca, a: x.veces, e: x.registrada ? 'REGISTRADA' : 'NO REGISTRADA' }));
+  bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Marcas_Detectadas_${D.nombre}.xlsx`);
 }
 
 async function exportarExcelCalidad() {
