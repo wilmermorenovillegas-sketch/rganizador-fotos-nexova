@@ -28,7 +28,9 @@ const GRIS = '#CBD5E1';
 
 /** Campos canónicos y sus pistas de detección (genéricos, multi-base). */
 const CAMPOS = [
-  { k: 'codigo',       l: 'Código',          key: true, hints: ['codigo inventario', 'codigo del activo', 'codigo activo', 'codigo del bien', 'codigo bien', 'codigo patrimonial', 'codigo interno', 'codigo de barra', 'codigo barra', 'barnueva', 'barnue', 'barcode', 'placa', 'etiqueta', 'correlativo', 'id activo', 'codigo', 'cod'] },
+  { k: 'codigo',       l: 'Código (barra nueva)', key: true, hints: ['barnueva', 'barra nueva', 'codigo de barras', 'codigo de barra', 'codbar', 'cod barra', 'codigo barra', 'barcode', 'barnue', 'codigo inventario', 'codigo del activo', 'codigo activo', 'codigo del bien', 'codigo bien', 'codigo patrimonial', 'codigo interno', 'placa', 'etiqueta', 'correlativo', 'id activo', 'codigo', 'cod'] },
+  { k: 'bar_antigua',  l: 'Barra antigua',   hints: ['barantigua', 'barra antigua', 'codigo antiguo', 'cod antiguo', 'barra anterior', 'codigo anterior', 'codigo antiguo de barra'] },
+  { k: 'bar_padre',    l: 'Barra padre',     hints: ['barpadre', 'barra padre', 'codigo padre', 'cod padre', 'barra del padre', 'codigo de barra padre'] },
   { k: 'descripcion',  l: 'Descripción',     hints: ['descripcion del activo', 'descripcion del bien', 'descripcion catalogo', 'desccatalogo', 'descripcion bien', 'denominacion', 'descripcion', 'nombre del activo', 'articulo'] },
   { k: 'sede',         l: 'Sede',            hints: ['sede', 'sucursal', 'local', 'establecimiento'] },
   { k: 'area',         l: 'Área',            hints: ['area', 'área'] },
