@@ -8,6 +8,9 @@
  * · Genérico: detección de columnas por pistas + remapeo manual del usuario.
  * · Maestro de marcas/modelos: por ahora LOCAL (Excel/JSON subido). Cuando se
  *   conecte Supabase, solo cambia la fuente de `D.maestro` — la lógica queda.
+ * · No se muestra el listado de "sin marca/modelo": se descarga en Excel a pedido.
+ * · Cuadros resumen por dimensión con gráfico de dona (total al centro) +
+ *   ranking numerado; etiquetas de cantidad siempre visibles (pantalla y PDF).
  * · PDF vectorial (jsPDF + autoTable + gráficos en canvas ocultos), no captura.
  * · Reutiliza los helpers ya probados de motor.js (no se modifica motor.js).
  * ============================================================================
@@ -19,28 +22,38 @@ const num = (n) => (+n || 0).toLocaleString('es-PE');
 const pct1 = (n) => (+n || 0).toFixed(1) + '%';
 const esc = (t) => String(t ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
-const TEAL = '#0F766E';
 const PALETA = ['#0F766E', '#14B8A6', '#0D9488', '#2DD4BF', '#0891B2', '#0EA5E9',
                 '#6366F1', '#7C3AED', '#DB2777', '#F59E0B', '#DC2626', '#65A30D'];
+const GRIS = '#CBD5E1';
 
-/** Campos canónicos y sus pistas de detección (genéricos, no atados a SITIA). */
+/** Campos canónicos y sus pistas de detección (genéricos, multi-base). */
 const CAMPOS = [
-  { k: 'codigo',      l: 'Código',          key: true, hints: ['codigo inventario', 'codigo activo', 'codigo interno', 'codigo', 'cod', 'barnue', 'placa', 'etiqueta', 'id activo', 'correlativo'] },
-  { k: 'descripcion', l: 'Descripción',     hints: ['descripcion del activo', 'descripcion', 'denominacion', 'detalle', 'bien', 'nombre', 'articulo', 'desccatalogo'] },
-  { k: 'marca',       l: 'Marca',           hints: ['marca', 'fabricante', 'brand'] },
-  { k: 'modelo',      l: 'Modelo',          hints: ['modelo', 'model'] },
-  { k: 'serie',       l: 'Nro. Serie',      hints: ['nro serie', 'numero de serie', 'n serie', 'serie', 'serial'] },
-  { k: 'ubicacion',   l: 'Ubicación',       hints: ['descripcion ubicacion', 'descubicacion', 'ubicacion', 'area', 'ambiente'] },
-  { k: 'centro',      l: 'Centro de costo', hints: ['centro de costo', 'centro costo', 'desccentrocosto', 'cco'] },
-  { k: 'responsable', l: 'Responsable',     hints: ['responsable', 'custodio', 'usuario', 'asignado'] },
-  { k: 'linea',       l: 'Línea',           hints: ['linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
-  { k: 'familia',     l: 'Familia',         hints: ['descripcion de familia', 'familia', 'grupo', 'rubro', 'clase', 'categoria'] },
-  { k: 'estado',      l: 'Estado',          hints: ['estado conservacion', 'estado de conservacion', 'estado', 'condicion', 'situacion'] },
-  { k: 'color',       l: 'Color',           hints: ['color'] },
-  { k: 'observacion', l: 'Observaciones',   hints: ['observaciones', 'observacion', 'nota', 'glosa'] },
+  { k: 'codigo',       l: 'Código',          key: true, hints: ['barnueva', 'barnue', 'codigo inventario', 'codigo activo', 'codigo interno', 'codigo', 'cod', 'placa', 'etiqueta', 'id activo', 'correlativo'] },
+  { k: 'descripcion',  l: 'Descripción',     hints: ['desccatalogo', 'descripcion del activo', 'descripcion', 'denominacion', 'detalle', 'bien', 'nombre', 'articulo'] },
+  { k: 'sede',         l: 'Sede',            hints: ['sede', 'sucursal', 'local', 'establecimiento'] },
+  { k: 'area',         l: 'Área',            hints: ['area', 'área'] },
+  { k: 'cod_ubic',     l: 'Cód. Ubicación',  hints: ['codubicacion', 'cod ubicacion', 'codigo ubicacion'] },
+  { k: 'ubicacion',    l: 'Ubicación',       hints: ['descubicacion', 'desc ubicacion', 'descripcion ubicacion', 'ubicacion'] },
+  { k: 'cod_centro',   l: 'Cód. Centro Costo', hints: ['codcentrocosto', 'cod centro costo', 'codigo centro costo'] },
+  { k: 'centro',       l: 'Centro de costo', hints: ['desccentrocosto', 'desc centro costo', 'centro de costo', 'centro costo', 'cco'] },
+  { k: 'cod_resp',     l: 'Cód. Responsable', hints: ['codresponsable', 'cod responsable', 'codigo responsable'] },
+  { k: 'responsable',  l: 'Responsable',     hints: ['descresponsable', 'desc responsable', 'responsable', 'custodio', 'usuario', 'asignado'] },
+  { k: 'cod_familia',  l: 'Cód. Familia',    hints: ['codfamilia', 'cod familia', 'codigo familia'] },
+  { k: 'familia',      l: 'Familia',         hints: ['descfamilia', 'desc familia', 'descripcion de familia', 'familia', 'grupo', 'rubro', 'clase', 'categoria'] },
+  { k: 'cod_catalogo', l: 'Cód. Catálogo',   hints: ['codcatalogo', 'cod catalogo', 'codigo catalogo', 'codigo de catalogo'] },
+  { k: 'marca',        l: 'Marca',           hints: ['marca', 'fabricante', 'brand'] },
+  { k: 'modelo',       l: 'Modelo',          hints: ['modelo', 'model'] },
+  { k: 'serie',        l: 'Nro. Serie',      hints: ['nro serie', 'numero de serie', 'n serie', 'serie', 'serial'] },
+  { k: 'medidas',      l: 'Medidas',         hints: ['medidas', 'medida', 'dimensiones', 'lxaxh'] },
+  { k: 'capacidad',    l: 'Capacidad',       hints: ['capacidad', 'capac'] },
+  { k: 'color',        l: 'Color',           hints: ['color'] },
+  { k: 'estado',       l: 'Estado',          hints: ['estado conservacion', 'estado de conservacion', 'estado', 'condicion', 'situacion'] },
+  { k: 'detalle',      l: 'Detalle técnico', hints: ['detalle tecnico', 'detalle técnico', 'ficha tecnica', 'especificaciones', 'detalle'] },
+  { k: 'linea',        l: 'Línea',           hints: ['linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
+  { k: 'observacion',  l: 'Observaciones',   hints: ['observaciones', 'observacion', 'nota', 'glosa'] },
 ];
-// Dimensiones que alimentan los gráficos del resumen (si están detectadas).
-const DIMS_RESUMEN = ['familia', 'estado', 'ubicacion', 'centro', 'marca', 'linea'];
+// Dimensiones para los cuadros resumen (se muestran las detectadas, en orden).
+const DIMS_CUADROS = ['sede', 'area', 'centro', 'responsable', 'familia', 'estado', 'ubicacion', 'linea'];
 // Campos cuyo texto se pasa a MAYÚSCULAS al depurar.
 const A_MAYUS = new Set(['marca', 'modelo', 'serie', 'color']);
 
@@ -113,9 +126,15 @@ async function leerBase(archivo) {
     }
     D.nombre = archivo.name.replace(/\.[^.]+$/, '');
 
-    // Detección automática por pistas.
+    // Detección automática por pistas, evitando asignar la misma columna 2 veces.
     D.cols = {};
-    CAMPOS.forEach((c) => { D.cols[c.k] = adivinarColumna(D.headers, c.hints) || ''; });
+    const usadas = new Set();
+    CAMPOS.forEach((c) => {
+      let hit = adivinarColumna(D.headers, c.hints) || '';
+      if (hit && usadas.has(hit)) hit = '';
+      D.cols[c.k] = hit;
+      if (hit) usadas.add(hit);
+    });
 
     const z = $('depZona');
     z.classList.add('ok');
@@ -206,66 +225,52 @@ function clasificarMM(r) {
 
 function validarMM() {
   D.alertas = [];
-  for (const r of D.clean) {
-    // Enriquecer a la grafía canónica del maestro cuando coincide.
-    if (D.maestro) {
+  D.clean.forEach((r, i) => {
+    if (D.maestro) {   // enriquecer a la grafía canónica del maestro
       const m = D.maestro.get(normalizar(r.marca));
-      if (m) {
-        r.marca = m.nombre;
-        const mo = m.modelos.get(normalizar(r.modelo));
-        if (mo) r.modelo = mo;
-      }
+      if (m) { r.marca = m.nombre; const mo = m.modelos.get(normalizar(r.modelo)); if (mo) r.modelo = mo; }
     }
     const c = clasificarMM(r);
     r._mm = c ? c.tipo : 'ok';
-    if (c) D.alertas.push({ codigo: r.codigo, descripcion: r.descripcion, marca: r.marca, modelo: r.modelo, ubicacion: r.ubicacion, motivo: c.motivo });
-  }
+    if (c) D.alertas.push({ n: 0, fila: i + 1, codigo: r.codigo, descripcion: r.descripcion, marca: r.marca, modelo: r.modelo, ubicacion: r.ubicacion, motivo: c.motivo });
+  });
+  D.alertas.forEach((a, i) => { a.n = i + 1; });
 }
 
 function calcularMetricas() {
   const total = D.clean.length;
   const presentes = CAMPOS.filter((c) => D.cols[c.k]);
-  // Completitud por campo detectado.
   const compl = presentes.map((c) => {
     const llenos = D.clean.filter((r) => String(r[c.k] ?? '').trim() !== '').length;
     return { k: c.k, l: c.l, llenos, pct: total ? (llenos / total) * 100 : 0 };
   });
   const complGlobal = compl.length ? compl.reduce((s, x) => s + x.pct, 0) / compl.length : 0;
-  // Duplicados.
   const dup = (k) => {
     if (!D.cols[k]) return { n: 0, lista: [] };
-    const vistos = new Map(); const rep = new Map();
-    D.clean.forEach((r) => {
-      const v = normalizar(r[k]); if (!v) return;
-      if (vistos.has(v)) rep.set(v, (rep.get(v) || 1) + 1); else vistos.set(v, 1);
-    });
+    const vistos = new Map(), rep = new Map();
+    D.clean.forEach((r) => { const v = normalizar(r[k]); if (!v) return; if (vistos.has(v)) rep.set(v, (rep.get(v) || 1) + 1); else vistos.set(v, 1); });
     return { n: rep.size, lista: [...rep.entries()].map(([v, c]) => ({ valor: v, veces: c })).sort((a, b) => b.veces - a.veces) };
   };
   const sinCodigo = D.clean.filter((r) => !normalizar(r.codigo)).length;
   const alertasVacio = D.alertas.filter((a) => a.motivo.startsWith('Sin')).length;
-  const alertasNoReg = D.alertas.length - alertasVacio;
-
   D.M = {
     total, presentes, compl, complGlobal,
     dupCodigo: dup('codigo'), dupSerie: dup('serie'),
     sinCodigo, cambios: D.clean.reduce((s, r) => s + (r._ch || 0), 0),
-    alertasVacio, alertasNoReg, mmOk: D.clean.filter((r) => r._mm === 'ok').length,
+    alertasVacio, alertasNoReg: D.alertas.length - alertasVacio, mmOk: D.clean.filter((r) => r._mm === 'ok').length,
   };
 }
 
 // ── 3) Dashboard ────────────────────────────────────────────
 const TABS = [
-  { k: 'resumen',  l: 'Resumen' },
-  { k: 'calidad',  l: 'Calidad de datos' },
-  { k: 'mm',       l: 'Marca / Modelo' },
-  { k: 'base',     l: 'Base depurada' },
+  { k: 'resumen', l: 'Resúmenes' },
+  { k: 'calidad', l: 'Calidad de datos' },
+  { k: 'mm',      l: 'Marca / Modelo' },
 ];
 
 function pintarTabs() {
-  $('depTabs').innerHTML = TABS.map((t) =>
-    `<button class="dtab${t.k === D.tab ? ' activo' : ''}" data-t="${t.k}">${t.l}</button>`).join('');
+  $('depTabs').innerHTML = TABS.map((t) => `<button class="dtab${t.k === D.tab ? ' activo' : ''}" data-t="${t.k}">${t.l}</button>`).join('');
   $('depTabs').querySelectorAll('.dtab').forEach((b) => { b.onclick = () => irTab(b.dataset.t); });
-
   const M = D.M;
   $('depKpis').innerHTML = [
     kpi('Registros', num(M.total)),
@@ -281,31 +286,60 @@ function irTab(t) {
   D.tab = t;
   $('depTabs').querySelectorAll('.dtab').forEach((b) => b.classList.toggle('activo', b.dataset.t === t));
   destruirCharts();
-  if (t === 'resumen') panelResumen();
+  if (t === 'resumen') panelCuadros();
   else if (t === 'calidad') panelCalidad();
   else if (t === 'mm') panelMM();
-  else if (t === 'base') panelBase();
 }
 
-function panelResumen() {
-  const dims = DIMS_RESUMEN.filter((k) => D.cols[k]);
+// ── Cuadros resumen por dimensión (dona + ranking numerado) ─
+function cuadroData(k) {
+  const arr = conteo(k);
+  const total = arr.reduce((s, x) => s + x.veces, 0) || 1;
+  const TOP = 8;
+  const top = arr.slice(0, TOP);
+  const restoSum = arr.slice(TOP).reduce((s, x) => s + x.veces, 0);
+  const slices = top.map((x, i) => ({ nombre: x.valor, veces: x.veces, color: PALETA[i % PALETA.length] }));
+  if (restoSum > 0) slices.push({ nombre: `Otros (${arr.length - TOP})`, veces: restoSum, color: GRIS });
+  const maxV = arr[0] ? arr[0].veces : 1;
+  const list = arr.slice(0, 12).map((x, i) => ({ n: i + 1, nombre: x.valor, veces: x.veces, pct: (x.veces / total) * 100, rel: (x.veces / maxV) * 100, color: i < TOP ? PALETA[i % PALETA.length] : '#94A3B8' }));
+  return { arr, total, slices, list, extra: Math.max(0, arr.length - 12) };
+}
+
+function panelCuadros() {
+  const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
   if (!dims.length) {
-    $('depPanel').innerHTML = `<div class="aviso warn"><span>ℹ️</span><div>No se detectaron dimensiones (familia, estado, ubicación, etc.) para graficar. Revisa el mapeo de columnas.</div></div>`;
+    $('depPanel').innerHTML = `<div class="aviso warn"><span>ℹ️</span><div>No se detectaron dimensiones para resumir (Sede, Área, Centro de costo, Responsable…). Revisa el mapeo de columnas.</div></div>`;
     return;
   }
-  const label = (k) => CAMPOS.find((c) => c.k === k).l;
-  $('depPanel').innerHTML = `<div class="graficos-grid" style="grid-template-columns:1fr 1fr">
-    ${dims.map((k) => `<div class="gpanel"><div class="gtitle">Registros por ${esc(label(k).toLowerCase())}</div>
-      <div class="gcanvas-wrap"><canvas id="dc_${k}" width="470" height="260"></canvas></div></div>`).join('')}
-  </div>`;
-  dims.forEach((k) => barra(`dc_${k}`, conteo(k).slice(0, 12)));
+  $('depPanel').innerHTML = `<div class="cuadros-wrap">${dims.map((k) => {
+    const label = CAMPOS.find((c) => c.k === k).l;
+    const { total, arr, list, extra } = cuadroData(k);
+    return `<div class="cuadro">
+      <div class="cuadro-head">Activos por ${esc(label.toLowerCase())} <span class="cuadro-tot">${num(arr.length)} ${arr.length === 1 ? 'categoría' : 'categorías'}</span></div>
+      <div class="cuadro-body">
+        <div class="cuadro-graf"><canvas id="cq_${k}" width="200" height="200"></canvas>
+          <div class="cuadro-center"><b>${num(total)}</b><span>activos</span></div></div>
+        <div class="cuadro-rank">
+          ${list.map((it) => `<div class="rk-row">
+            <span class="rk-n">${it.n}</span><span class="rk-sw" style="background:${it.color}"></span>
+            <span class="rk-name" title="${esc(it.nombre)}">${esc(it.nombre)}</span>
+            <span class="rk-val">${num(it.veces)} <em>${pct1(it.pct)}</em></span>
+            <span class="rk-bar"><i style="width:${it.rel.toFixed(0)}%;background:${it.color}"></i></span>
+          </div>`).join('')}
+          ${extra ? `<div class="rk-more">y ${num(extra)} categorías más…</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+  dims.forEach((k) => donaCuadro(`cq_${k}`, cuadroData(k).slices));
 }
 
 function panelCalidad() {
   const M = D.M;
-  const bar = (c) => {
+  const bar = (c, i) => {
     const cl = semClass(c.pct);
     return `<div class="q-row">
+      <span class="q-n">${i}</span>
       <div class="qn">${esc(c.l)} <span style="color:var(--gris);font-weight:400">· ${num(c.llenos)}/${num(M.total)}</span></div>
       <div class="q-bar"><div class="q-bar-fill ${cl}" style="width:${c.pct.toFixed(0)}%"></div></div>
       <div class="q-pct ${cl}">${pct1(c.pct)}</div>
@@ -313,13 +347,13 @@ function panelCalidad() {
   };
   const dupBlock = (titulo, d) => `<div class="cx" style="background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:14px">
       <div class="gtitle">${titulo}: ${num(d.n)} valores repetidos</div>
-      ${d.n ? `<div class="tabla-wrap" style="margin:0"><table><thead><tr><th>Valor</th><th class="r">Veces</th></tr></thead><tbody>
-        ${d.lista.slice(0, 10).map((x) => `<tr><td>${esc(x.valor)}</td><td class="r">${num(x.veces)}</td></tr>`).join('')}
+      ${d.n ? `<div class="tabla-wrap" style="margin:0"><table><thead><tr><th style="width:34px">N°</th><th>Valor</th><th class="r">Veces</th></tr></thead><tbody>
+        ${d.lista.slice(0, 10).map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.valor)}</td><td class="r">${num(x.veces)}</td></tr>`).join('')}
       </tbody></table></div>` : '<div class="mini-note">Sin duplicados.</div>'}
     </div>`;
   $('depPanel').innerHTML = `
     <div class="res-tit" style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">Completitud por campo</div>
-    <div class="q-list" style="margin-bottom:16px">${M.compl.map(bar).join('')}</div>
+    <div class="q-list" style="margin-bottom:16px">${M.compl.map((c, i) => bar(c, i + 1)).join('')}</div>
     <div class="graficos-grid" style="grid-template-columns:1fr 1fr">
       ${dupBlock('Códigos duplicados', M.dupCodigo)}
       ${dupBlock('Series duplicadas', M.dupSerie)}
@@ -330,9 +364,8 @@ function panelCalidad() {
 function panelMM() {
   const M = D.M;
   const estado = D.maestro
-    ? `<b>Maestro cargado</b>${num(D.maestro.size)} marcas · valida contra el catálogo`
-    : `<b>Sin maestro cargado</b>Solo se listan los activos con marca/modelo vacío. Carga un maestro para validar contra el catálogo.`;
-  const topNoReg = conteoAlertas();
+    ? `<b>Maestro cargado</b>${num(D.maestro.size)} marcas registradas · valida contra el catálogo`
+    : `<b>Sin maestro cargado</b>Solo se cuentan los activos con marca/modelo vacío. Carga un maestro para validar contra el catálogo.`;
   $('depPanel').innerHTML = `
     <div class="maestro-box">
       <div class="mtxt">${estado}</div>
@@ -345,61 +378,14 @@ function panelMM() {
       ${kpi('Con campo vacío', num(M.alertasVacio), M.alertasVacio ? 'warn' : 'ok')}
       ${kpi('No registrados', num(M.alertasNoReg), M.alertasNoReg ? 'warn' : 'ok')}
     </div>
-    ${topNoReg.length ? `<div class="res-tit" style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Marcas más frecuentes en las alertas (candidatas al maestro)</div>
-      <div class="cards-grid" style="margin-bottom:14px">${topNoReg.slice(0, 8).map((x) => `<div class="rcard"><div class="rcard-nombre">${esc(x.valor)}</div><div class="rcard-nums"><span class="rcard-total">${num(x.veces)} activos</span></div></div>`).join('')}</div>` : ''}
-    <div class="tabla-wrap">
-      <div style="padding:9px 13px;border-bottom:1px solid var(--gris-200);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <input class="dep-search" id="mmSearch" placeholder="🔍 Buscar en alertas…">
-        <span class="mini-note" style="margin:0" id="mmCnt"></span>
-      </div>
-      <div style="max-height:460px;overflow:auto"><table><thead><tr>
-        <th>Código</th><th>Descripción</th><th>Marca</th><th>Modelo</th><th>Ubicación</th><th>Motivo</th>
-      </tr></thead><tbody id="mmBody"></tbody></table></div>
+    <div class="aviso ${D.alertas.length ? 'warn' : ''}" style="${D.alertas.length ? '' : 'display:none'}">
+      <span>⚠️</span><div><b>${num(D.alertas.length)} activos sin marca/modelo registrado.</b> El detalle no se muestra aquí; descárgalo cuando lo necesites.</div>
     </div>
-    <div class="mini-note">${num(D.alertas.length)} activos sin marca/modelo registrado.</div>`;
-
+    <div><button class="b-desc teal" id="btnAlertasXls" ${D.alertas.length ? '' : 'disabled'}>⬇ Descargar activos sin marca/modelo (Excel)</button></div>`;
   $('btnMaestro').onclick = () => $('depMaestro').click();
   $('depMaestro').onchange = (e) => cargarMaestro(e.target.files[0]);
+  $('btnAlertasXls').onclick = exportarAlertasExcel;
   if (D.maestro) $('btnMaestroClr').onclick = () => { D.maestro = null; validarMM(); calcularMetricas(); pintarTabs(); irTab('mm'); };
-  const search = $('mmSearch');
-  const render = () => {
-    const q = search.value.toLowerCase();
-    const filas = D.alertas.filter((a) => !q || [a.codigo, a.descripcion, a.marca, a.modelo, a.motivo].some((v) => String(v ?? '').toLowerCase().includes(q)));
-    $('mmBody').innerHTML = filas.slice(0, 800).map((a) => `<tr>
-      <td>${esc(a.codigo)}</td><td>${esc(a.descripcion)}</td><td>${esc(a.marca)}</td>
-      <td>${esc(a.modelo)}</td><td>${esc(a.ubicacion)}</td>
-      <td><span class="pill ${a.motivo.startsWith('Sin') ? 'warn' : 'bad'}">${esc(a.motivo)}</span></td></tr>`).join('')
-      || `<tr><td colspan="6" style="text-align:center;color:var(--gris);padding:18px">Sin coincidencias.</td></tr>`;
-    $('mmCnt').textContent = `${num(Math.min(filas.length, 800))} de ${num(filas.length)}`;
-  };
-  search.oninput = render;
-  render();
-}
-
-function panelBase() {
-  const cols = CAMPOS.filter((c) => D.cols[c.k]);
-  $('depPanel').innerHTML = `
-    <div class="tabla-wrap">
-      <div style="padding:9px 13px;border-bottom:1px solid var(--gris-200);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <input class="dep-search" id="baseSearch" placeholder="🔍 Buscar en la base…">
-        <span class="mini-note" style="margin:0" id="baseCnt"></span>
-      </div>
-      <div style="max-height:560px;overflow:auto"><table><thead><tr>
-        ${cols.map((c) => `<th>${esc(c.l)}</th>`).join('')}
-      </tr></thead><tbody id="baseBody"></tbody></table></div>
-    </div>
-    <div class="mini-note">Se muestran hasta 800 filas; usa la búsqueda o exporta el Excel para la base completa.</div>`;
-  const search = $('baseSearch');
-  const render = () => {
-    const q = search.value.toLowerCase();
-    const filas = D.clean.filter((r) => !q || cols.some((c) => String(r[c.k] ?? '').toLowerCase().includes(q)));
-    $('baseBody').innerHTML = filas.slice(0, 800).map((r) =>
-      `<tr>${cols.map((c) => `<td>${esc(r[c.k])}</td>`).join('')}</tr>`).join('')
-      || `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--gris);padding:18px">Sin coincidencias.</td></tr>`;
-    $('baseCnt').textContent = `${num(Math.min(filas.length, 800))} de ${num(filas.length)}`;
-  };
-  search.oninput = render;
-  render();
 }
 
 // ── Maestro de marcas/modelos (fuente local; Supabase al final) ─
@@ -445,27 +431,51 @@ function conteo(k) {
   D.clean.forEach((r) => { const v = String(r[k] ?? '').trim() || 'Sin dato'; m.set(v, (m.get(v) || 0) + 1); });
   return [...m.entries()].map(([valor, veces]) => ({ valor, veces })).sort((a, b) => b.veces - a.veces);
 }
-function conteoAlertas() {
-  const m = new Map();
-  D.alertas.forEach((a) => { const v = String(a.marca ?? '').trim(); if (!v) return; m.set(v, (m.get(v) || 0) + 1); });
-  return [...m.entries()].map(([valor, veces]) => ({ valor, veces })).sort((a, b) => b.veces - a.veces);
-}
 const semClass = (v) => (v < 60 ? 'bad' : v < 90 ? 'warn' : 'ok');
 const kpi = (l, v, cls = '', sub = '') => `<div class="kpi ${cls}"><div class="kl">${l}</div><div class="kv">${v}</div>${sub ? `<div class="ks">${sub}</div>` : ''}</div>`;
 
-// ── Gráficos (responsive:false, tamaño fijo → sin scroll infinito) ─
+// ── Gráficos: dona + etiquetas de cantidad siempre visibles ─
 const fondoBlanco = { id: 'fb', beforeDraw(c) { const x = c.ctx; x.save(); x.globalCompositeOperation = 'destination-over'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.restore(); } };
+
+/** Dibuja el valor sobre cada elemento (arco o barra). Siempre visible. */
+const etiquetas = {
+  id: 'etiquetas',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (meta.hidden) return;
+      meta.data.forEach((el, i) => {
+        const raw = ds.data[i];
+        if (raw == null || raw === 0) return;
+        const txt = (+raw).toLocaleString('es-PE');
+        ctx.save();
+        ctx.font = '700 11px "DM Sans", system-ui, sans-serif';
+        if (el.outerRadius !== undefined) {          // arco (dona/polar)
+          if (el.circumference !== undefined && el.circumference < 0.28) { ctx.restore(); return; }
+          const p = el.tooltipPosition();
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(txt, p.x, p.y);
+          ctx.fillStyle = '#1E293B'; ctx.fillText(txt, p.x, p.y);
+        } else {                                     // barra
+          ctx.fillStyle = '#334155';
+          if (chart.options.indexAxis === 'y') { ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, el.x + 4, el.y); }
+          else { ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(txt, el.x, el.y - 3); }
+        }
+        ctx.restore();
+      });
+    });
+  },
+};
+
 function destruirCharts() { for (const k in CH) { CH[k]?.destroy?.(); delete CH[k]; } }
-function barra(id, datos) {
+
+function donaCuadro(id, slices) {
   const cv = $(id); if (!cv) return;
   CH[id] = new Chart(cv.getContext('2d'), {
-    type: 'bar', plugins: [fondoBlanco],
-    data: { labels: datos.map((d) => d.valor), datasets: [{ data: datos.map((d) => d.veces), backgroundColor: datos.map((_, i) => PALETA[i % PALETA.length]), borderRadius: 4, barThickness: 14 }] },
-    options: {
-      responsive: false, maintainAspectRatio: false, animation: false, indexAxis: 'y',
-      scales: { x: { beginAtZero: true, ticks: { font: { size: 10 }, color: '#475569' }, grid: { color: '#F1F5F9' } }, y: { ticks: { font: { size: 10 }, color: '#475569', autoSkip: false }, grid: { display: false } } },
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${num(c.raw)} registros` } } },
-    },
+    type: 'doughnut', plugins: [fondoBlanco, etiquetas],
+    data: { labels: slices.map((s) => s.nombre), datasets: [{ data: slices.map((s) => s.veces), backgroundColor: slices.map((s) => s.color), borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '58%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${num(c.raw)}` } } } },
   });
 }
 
@@ -487,11 +497,11 @@ async function exportarExcelDepurado() {
   const cols = CAMPOS.filter((c) => D.cols[c.k]);
   const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
   const ws = wb.addWorksheet('BASE DEPURADA');
-  ws.columns = cols.map((c) => ({ header: c.l, key: c.k, width: Math.max(12, Math.min(40, c.l.length + 8)) }));
+  ws.columns = [{ header: 'N°', key: '_n', width: 6 }].concat(cols.map((c) => ({ header: c.l, key: c.k, width: Math.max(12, Math.min(40, c.l.length + 8)) })));
   styleHead(ws.getRow(1));
   ws.views = [{ state: 'frozen', ySplit: 1 }];
-  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
-  D.clean.forEach((r) => { const o = {}; cols.forEach((c) => { o[c.k] = r[c.k]; }); ws.addRow(o); });
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length + 1 } };
+  D.clean.forEach((r, i) => { const o = { _n: i + 1 }; cols.forEach((c) => { o[c.k] = r[c.k]; }); ws.addRow(o); });
   bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Base_Depurada_${D.nombre}.xlsx`);
 }
 
@@ -512,16 +522,31 @@ async function exportarExcelCalidad() {
   });
 
   const wc = wb.addWorksheet('COMPLETITUD');
-  wc.columns = [{ header: 'Campo', key: 'l', width: 26 }, { header: 'Con dato', key: 'n', width: 12 }, { header: 'Total', key: 't', width: 12 }, { header: '% completitud', key: 'p', width: 14 }];
+  wc.columns = [{ header: 'N°', key: 'n', width: 6 }, { header: 'Campo', key: 'l', width: 26 }, { header: 'Con dato', key: 'd', width: 12 }, { header: 'Total', key: 't', width: 12 }, { header: '% completitud', key: 'p', width: 14 }];
   styleHead(wc.getRow(1));
-  M.compl.forEach((c) => wc.addRow({ l: c.l, n: c.llenos, t: M.total, p: +c.pct.toFixed(1) }));
+  M.compl.forEach((c, i) => wc.addRow({ n: i + 1, l: c.l, d: c.llenos, t: M.total, p: +c.pct.toFixed(1) }));
 
-  const wa = wb.addWorksheet('ALERTAS MARCA-MODELO');
-  wa.columns = [{ header: 'Código', key: 'c', width: 20 }, { header: 'Descripción', key: 'd', width: 40 }, { header: 'Marca', key: 'm', width: 18 }, { header: 'Modelo', key: 'mo', width: 18 }, { header: 'Ubicación', key: 'u', width: 24 }, { header: 'Motivo', key: 'mt', width: 34 }];
-  styleHead(wa.getRow(1));
-  D.alertas.forEach((a) => wa.addRow({ c: a.codigo, d: a.descripcion, m: a.marca, mo: a.modelo, u: a.ubicacion, mt: a.motivo }));
+  const wd = wb.addWorksheet('DUPLICADOS');
+  wd.columns = [{ header: 'N°', key: 'n', width: 6 }, { header: 'Tipo', key: 't', width: 12 }, { header: 'Valor', key: 'v', width: 32 }, { header: 'Veces', key: 'x', width: 10 }];
+  styleHead(wd.getRow(1));
+  let dn = 0;
+  M.dupCodigo.lista.forEach((x) => wd.addRow({ n: ++dn, t: 'Código', v: x.valor, x: x.veces }));
+  M.dupSerie.lista.forEach((x) => wd.addRow({ n: ++dn, t: 'Serie', v: x.valor, x: x.veces }));
 
   bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Calidad_${D.nombre}.xlsx`);
+}
+
+async function exportarAlertasExcel() {
+  if (!D.alertas.length) { alert('No hay activos sin marca/modelo para exportar.'); return; }
+  const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
+  const wa = wb.addWorksheet('SIN MARCA-MODELO');
+  wa.columns = [{ header: 'N°', key: 'n', width: 6 }, { header: 'Fila base', key: 'f', width: 9 }, { header: 'Código', key: 'c', width: 20 },
+    { header: 'Descripción', key: 'd', width: 40 }, { header: 'Marca', key: 'm', width: 18 }, { header: 'Modelo', key: 'mo', width: 18 },
+    { header: 'Ubicación', key: 'u', width: 24 }, { header: 'Motivo', key: 'mt', width: 34 }];
+  styleHead(wa.getRow(1));
+  wa.views = [{ state: 'frozen', ySplit: 1 }];
+  D.alertas.forEach((a) => wa.addRow({ n: a.n, f: a.fila, c: a.codigo, d: a.descripcion, m: a.marca, mo: a.modelo, u: a.ubicacion, mt: a.motivo }));
+  bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Sin_Marca_Modelo_${D.nombre}.xlsx`);
 }
 
 async function exportarPDF() {
@@ -548,57 +573,46 @@ async function exportarPDF() {
   });
   y += 26;
 
-  // Completitud por campo
   doc.setFillColor(15, 118, 110); doc.rect(M, y - 4, 3, 6, 'F');
-  doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59); doc.text('Completitud por campo', M + 6, y + 1);
-  y += 6;
+  doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59); doc.text('Completitud por campo', M + 6, y + 1); y += 6;
   doc.autoTable({
     startY: y, margin: { left: M, right: M },
-    head: [['Campo', 'Con dato', 'Total', '% completitud']],
-    body: m.compl.map((c) => [c.l, num(c.llenos), num(m.total), `${c.pct.toFixed(1)}%`]),
+    head: [['N°', 'Campo', 'Con dato', 'Total', '% completitud']],
+    body: m.compl.map((c, i) => [i + 1, c.l, num(c.llenos), num(m.total), `${c.pct.toFixed(1)}%`]),
     theme: 'grid', styles: { fontSize: 8, cellPadding: 1.8 }, headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 8 },
-    alternateRowStyles: { fillColor: [248, 250, 251] }, columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+    alternateRowStyles: { fillColor: [248, 250, 251] }, columnStyles: { 0: { cellWidth: 10, halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
   });
   y = doc.lastAutoTable.finalY + 10;
 
-  // Gráficos de dimensiones (canvas ocultos)
   const cont = document.createElement('div'); cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none'; document.body.appendChild(cont);
   try {
-    const dims = DIMS_RESUMEN.filter((k) => D.cols[k]).slice(0, 4);
+    const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
     for (const k of dims) {
-      if (y > 235) { doc.addPage(); y = 20; }
+      if (y > 200) { doc.addPage(); y = 20; }
       const label = CAMPOS.find((c) => c.k === k).l;
+      const { slices, list, total, extra } = cuadroData(k);
       doc.setFillColor(15, 118, 110); doc.rect(M, y - 4, 3, 6, 'F');
-      doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59); doc.text(`Registros por ${label.toLowerCase()}`, M + 6, y + 1);
-      y += 8;
-      const datos = conteo(k).slice(0, 12);
-      const cv = document.createElement('canvas'); cv.width = 900; cv.height = 420; cont.appendChild(cv);
+      doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59); doc.text(`Activos por ${label.toLowerCase()}`, M + 6, y + 1); y += 8;
+
+      // Dona con etiquetas (canvas oculto)
+      const cv = document.createElement('canvas'); cv.width = 460; cv.height = 460; cont.appendChild(cv);
       const ch = new Chart(cv.getContext('2d'), {
-        type: 'bar', plugins: [fondoBlanco],
-        data: { labels: datos.map((d) => d.valor), datasets: [{ data: datos.map((d) => d.veces), backgroundColor: datos.map((_, i) => PALETA[i % PALETA.length]), borderRadius: 4 }] },
-        options: { responsive: false, maintainAspectRatio: false, animation: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { color: '#475569' } }, y: { ticks: { color: '#475569', font: { size: 11 } } } } },
+        type: 'doughnut', plugins: [fondoBlanco, etiquetas],
+        data: { labels: slices.map((s) => s.nombre), datasets: [{ data: slices.map((s) => s.veces), backgroundColor: slices.map((s) => s.color), borderWidth: 2, borderColor: '#fff' }] },
+        options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '55%', plugins: { legend: { display: false } } },
       });
       await new Promise((r) => requestAnimationFrame(r));
-      doc.addImage(cv.toDataURL('image/png', 1), 'PNG', M, y, W - M * 2, 52); ch.destroy();
-      y += 58;
-    }
+      doc.addImage(cv.toDataURL('image/png', 1), 'PNG', M, y, 58, 58); ch.destroy();
 
-    if (D.alertas.length) {
-      if (y > 220) { doc.addPage(); y = 20; }
-      doc.setFillColor(193, 30, 58); doc.rect(M, y - 4, 3, 6, 'F');
-      doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59); doc.text('Activos sin marca/modelo registrado', M + 6, y + 1);
-      y += 6;
+      // Ranking numerado al lado
       doc.autoTable({
-        startY: y, margin: { left: M, right: M },
-        head: [['Código', 'Descripción', 'Marca', 'Modelo', 'Motivo']],
-        body: D.alertas.slice(0, 300).map((a) => [a.codigo, a.descripcion, a.marca, a.modelo, a.motivo]),
-        theme: 'striped', styles: { fontSize: 7.5, cellPadding: 1.6 }, headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 8 },
-        columnStyles: { 0: { cellWidth: 26, fontStyle: 'bold' } },
+        startY: y, margin: { left: M + 64, right: M },
+        head: [['N°', label, 'Activos', '% ']],
+        body: list.map((it) => [it.n, it.nombre, num(it.veces), pct1(it.pct)]).concat(extra ? [['', `… y ${num(extra)} más`, '', '']] : []),
+        theme: 'grid', styles: { fontSize: 7.5, cellPadding: 1.4 }, headStyles: { fillColor: [30, 41, 59], textColor: 255, fontSize: 7.5 },
+        alternateRowStyles: { fillColor: [248, 250, 251] }, columnStyles: { 0: { cellWidth: 8, halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
       });
-      if (D.alertas.length > 300) {
-        doc.setFont('helvetica', 'italic').setFontSize(8).setTextColor(148, 163, 184);
-        doc.text(`Se muestran 300 de ${num(D.alertas.length)}. El listado completo está en el Excel de calidad.`, M, doc.lastAutoTable.finalY + 6);
-      }
+      y = Math.max(y + 62, doc.lastAutoTable.finalY + 10);
     }
     bajar(doc.output('blob'), `Informe_Calidad_${D.nombre}.pdf`);
   } finally {
