@@ -748,23 +748,26 @@ function dibujarFunnel(cv, slices, invertido) {
     const frac = invertido ? (n - i) / n : Math.max(0.14, seg[i].veces / maxV);
     return Math.max(18, maxW * frac);
   };
+  const hits = [];
   for (let i = 0; i < n; i++) {
     const y = padY + rowH * i;
     const wTop = wOf(i);
     const wBot = i < n - 1 ? wOf(i + 1) : (invertido ? wTop : wTop * 0.55);
-    ctx.beginPath();
-    ctx.moveTo(cx - wTop / 2, y);
-    ctx.lineTo(cx + wTop / 2, y);
-    ctx.lineTo(cx + wBot / 2, y + rowH - 3);
-    ctx.lineTo(cx - wBot / 2, y + rowH - 3);
-    ctx.closePath();
-    ctx.fillStyle = seg[i].color; ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    const path = new Path2D();
+    path.moveTo(cx - wTop / 2, y);
+    path.lineTo(cx + wTop / 2, y);
+    path.lineTo(cx + wBot / 2, y + rowH - 3);
+    path.lineTo(cx - wBot / 2, y + rowH - 3);
+    path.closePath();
+    ctx.fillStyle = seg[i].color; ctx.fill(path);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(path);
     ctx.font = '700 11px "DM Sans", system-ui, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(num(seg[i].veces), cx, y + rowH / 2);
     ctx.fillStyle = '#1E293B'; ctx.fillText(num(seg[i].veces), cx, y + rowH / 2);
+    hits.push({ label: seg[i].nombre, path });
   }
+  return hits;
 }
 
 /** Oscurece un color #RRGGBB por un factor (para las paredes del 3D). */
@@ -795,10 +798,12 @@ function dibujar3DPie(cv, slices, donut) {
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x1, y1 + depth); ctx.lineTo(x0, y0 + depth); ctx.closePath();
     ctx.fillStyle = oscurecer(seg.s.color, 0.6); ctx.fill();
   }
-  // Caras superiores (cuñas).
+  // Caras superiores (cuñas) — cada una es una región clicable.
+  const hits = [];
   segs.forEach((seg) => {
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.ellipse(cx, cy, rx, ry, 0, seg.start, seg.end); ctx.closePath();
-    ctx.fillStyle = seg.s.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    const path = new Path2D(); path.moveTo(cx, cy); path.ellipse(cx, cy, rx, ry, 0, seg.start, seg.end); path.closePath();
+    ctx.fillStyle = seg.s.color; ctx.fill(path); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(path);
+    hits.push({ label: seg.s.nombre, path });
   });
   if (donut) { ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.5, ry * 0.5, 0, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); }
   // Etiquetas de cantidad en las cuñas grandes.
@@ -810,6 +815,7 @@ function dibujar3DPie(cv, slices, donut) {
     ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(num(seg.s.veces), x, y);
     ctx.fillStyle = '#1E293B'; ctx.fillText(num(seg.s.veces), x, y);
   });
+  return hits;
 }
 
 /** Cono segmentado (ápice arriba, base ancha) por valor. */
@@ -822,17 +828,20 @@ function dibujarCono(cv, slices) {
   const yOf = (p) => apexY + (baseY - apexY) * p, wOf = (p) => maxW * p;
   ctx.beginPath(); ctx.ellipse(cx, baseY, maxW / 2, maxW * 0.06, 0, 0, Math.PI * 2); ctx.fillStyle = oscurecer(seg[n - 1].color, 0.7); ctx.fill();
   let cum = 0;
+  const hits = [];
   seg.forEach((s) => {
     const p0 = cum, p1 = cum + s.veces / total; cum = p1;
     const yTop = yOf(p0), yBot = yOf(p1), wTop = wOf(p0), wBot = wOf(p1);
-    ctx.beginPath(); ctx.moveTo(cx - wTop / 2, yTop); ctx.lineTo(cx + wTop / 2, yTop); ctx.lineTo(cx + wBot / 2, yBot); ctx.lineTo(cx - wBot / 2, yBot); ctx.closePath();
-    ctx.fillStyle = s.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    const path = new Path2D(); path.moveTo(cx - wTop / 2, yTop); path.lineTo(cx + wTop / 2, yTop); path.lineTo(cx + wBot / 2, yBot); path.lineTo(cx - wBot / 2, yBot); path.closePath();
+    ctx.fillStyle = s.color; ctx.fill(path); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(path);
+    hits.push({ label: s.nombre, path });
     if (p1 - p0 > 0.05) {
       ctx.font = '700 11px "DM Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(num(s.veces), cx, (yTop + yBot) / 2);
       ctx.fillStyle = '#1E293B'; ctx.fillText(num(s.veces), cx, (yTop + yBot) / 2);
     }
   });
+  return hits;
 }
 
 // Tipos con dibujo propio en canvas (no Chart.js).
@@ -845,6 +854,19 @@ function dibujarCustom(cv, tipo, slices) {
   if (tipo === 'pastel3d') return dibujar3DPie(cv, slices, false);
 }
 
+/** Clic/hover sobre gráficos dibujados a mano: hit-test por Path2D → filtro cruzado. */
+function wireCustomClick(cv, k, hits) {
+  const ctx = cv.getContext('2d');
+  const coord = (e) => {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+  };
+  const hitAt = (p) => hits.find((h) => ctx.isPointInPath(h.path, p.x, p.y));
+  cv.style.cursor = 'default';
+  cv.onclick = (e) => { const h = hitAt(coord(e)); if (h) aplicarFiltro(k, h.label); };
+  cv.onmousemove = (e) => { cv.style.cursor = hitAt(coord(e)) ? 'pointer' : 'default'; };
+}
+
 /** Renderiza el gráfico de un cuadro en el tipo elegido. */
 function renderCuadroChart(k, tipo) {
   const id = `cq_${k}`;
@@ -854,7 +876,8 @@ function renderCuadroChart(k, tipo) {
   const center = cv.parentElement.querySelector('.cuadro-center');
   if (center) center.style.display = (tipo === 'dona') ? 'flex' : 'none';
   if (TIPOS_CUSTOM.includes(tipo)) {
-    dibujarCustom(cv, tipo, slices);
+    const hits = dibujarCustom(cv, tipo, slices) || [];
+    wireCustomClick(cv, k, hits);
     return;
   }
   const cfg = chartConfig(tipo, slices, true);
