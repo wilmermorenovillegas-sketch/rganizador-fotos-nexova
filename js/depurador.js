@@ -108,7 +108,21 @@ const D = {
 };
 const CH = {};
 const tipoDim = {};   // tipo de gráfico elegido por dimensión
+let filtros = {};     // filtro cruzado: dimensión → valor seleccionado
 let inicializado = false;
+
+/** Filas que cumplen todos los filtros activos, salvo el de la dimensión `exceptK`. */
+function filasFiltradas(exceptK) {
+  const act = Object.entries(filtros).filter(([k]) => k !== exceptK);
+  if (!act.length) return D.clean;
+  return D.clean.filter((r) => act.every(([k, v]) => String(r[k] ?? '').trim() === v));
+}
+/** Aplica/quita un filtro por categoría y re-renderiza el dashboard. */
+function aplicarFiltro(k, val) {
+  if (!val || val === 'Sin dato' || /^Otros \(/.test(val)) return;
+  if (filtros[k] === val) delete filtros[k]; else filtros[k] = val;
+  panelCuadros();
+}
 
 // ════════════════════════════════════════════════════════════
 export const Depurador = { init };
@@ -137,6 +151,7 @@ function dragDrop(id, cb) {
 
 function reset() {
   D.raw = []; D.headers = []; D.cols = {}; D.clean = []; D.maestro = null; D.alertas = [];
+  filtros = {};
   destruirCharts();
   $('depDash').style.display = 'none';
   $('depDetect').style.display = 'none';
@@ -397,6 +412,26 @@ function cuadroData(k) {
   return { arr, total, slices, list, extra: Math.max(0, arr.length - 12) };
 }
 
+/** Fila de KPIs "hero": total de activos + categorías distintas por dimensión core. */
+function heroKpis() {
+  const rows = filasFiltradas(null);
+  const distintos = (k) => new Set(rows.map((r) => String(r[k] ?? '').trim()).filter((v) => v)).size;
+  const filtrado = Object.keys(filtros).length > 0;
+  const cards = [{ ic: '📦', n: num(rows.length), l: 'Activos' + (filtrado ? ' (filtrado)' : '') }];
+  CORE_DIMS.forEach((k) => {
+    if (dimVacio(k)) return;
+    cards.push({ ic: ICON_DIM[k] || '📊', n: num(distintos(k)), l: CAMPOS.find((c) => c.k === k).l });
+  });
+  return `<div class="hero-kpis">${cards.map((c) => `<div class="hkpi"><div class="hkpi-ic">${c.ic}</div><div class="hkpi-n">${c.n}</div><div class="hkpi-l">${esc(c.l)}</div></div>`).join('')}</div>`;
+}
+
+/** Barra de chips con los filtros activos. */
+function chipsFiltros() {
+  const keys = Object.keys(filtros);
+  if (!keys.length) return '';
+  return `<div class="filtro-bar"><span class="filtro-lbl">🔎 Filtros activos:</span>${keys.map((k) => `<button class="filtro-chip" data-k="${k}">${ICON_DIM[k] || ''} ${esc(CAMPOS.find((c) => c.k === k).l)}: <b>${esc(filtros[k])}</b> ✕</button>`).join('')}<button class="filtro-clear" id="filtroClear">Limpiar todo</button></div>`;
+}
+
 function panelCuadros() {
   const dims = dimsDashboard();
   if (!dims.length) {
@@ -409,8 +444,10 @@ function panelCuadros() {
   const opciones = (tipo) => TIPOS_GRAF.map((g) => op(g.v, tipo, g.t)).join('');
   const opPal = Object.entries(PALETAS).map(([k, p]) => `<option value="${k}"${k === paletaActual ? ' selected' : ''}>${p.nombre}</option>`).join('');
   $('depPanel').innerHTML = `
+    ${chipsFiltros()}
+    ${heroKpis()}
     <div class="dash-tools">
-      <div class="dash-tools-l"><b>${num(dims.length)}</b> dimensiones · <b>${num(D.M.total)}</b> activos analizados</div>
+      <div class="dash-tools-l"><b>${num(dims.length)}</b> dimensiones · <b>${num(filasFiltradas(null).length)}</b> activos${Object.keys(filtros).length ? ' (filtrado)' : ''} · 💡 clic en una categoría para filtrar</div>
       <label class="dash-pal">🎨 Colores
         <select id="selPaleta">${opPal}</select>
       </label>
@@ -455,12 +492,15 @@ function panelCuadros() {
             <span class="rk-n">N°</span><span></span>
             <span>${esc(label)}</span><span class="rk-val">Activos · %</span>
           </div>
-          ${list.map((it) => `<div class="rk-row">
+          ${list.map((it) => {
+            const clic = it.nombre && it.nombre !== 'Sin dato' && !/^Otros \(/.test(it.nombre);
+            const activo = filtros[k] === it.nombre;
+            return `<div class="rk-row${clic ? ' rk-click' : ''}${activo ? ' rk-activo' : ''}"${clic ? ` data-k="${k}" data-val="${esc(it.nombre).replace(/"/g, '&quot;')}"` : ''}>
             <span class="rk-n">${it.n}</span><span class="rk-sw" style="background:${it.color}"></span>
             <span class="rk-name" title="${esc(it.nombre)}">${esc(it.nombre)}</span>
             <span class="rk-val">${num(it.veces)} <em>${pct1(it.pct)}</em></span>
             <span class="rk-bar"><i style="width:${it.rel.toFixed(0)}%;background:${it.color}"></i></span>
-          </div>`).join('')}
+          </div>`; }).join('')}
           ${extra ? `<div class="rk-more">y ${num(extra)} categorías más…</div>` : ''}
         </div>
       </div>
@@ -471,6 +511,10 @@ function panelCuadros() {
     s.onchange = () => { tipoDim[s.dataset.k] = s.value; renderCuadroChart(s.dataset.k, s.value); };
   });
   $('selPaleta').onchange = (e) => { paletaActual = e.target.value; panelCuadros(); };
+  // Filtro cruzado: clic en fila del ranking, chips y limpiar.
+  $('depPanel').querySelectorAll('.rk-click').forEach((el) => { el.onclick = () => aplicarFiltro(el.dataset.k, el.dataset.val); });
+  $('depPanel').querySelectorAll('.filtro-chip').forEach((b) => { b.onclick = () => { delete filtros[b.dataset.k]; panelCuadros(); }; });
+  const clr = $('filtroClear'); if (clr) clr.onclick = () => { filtros = {}; panelCuadros(); };
 }
 
 function panelCalidad() {
@@ -599,7 +643,7 @@ async function cargarMaestro(archivo) {
 // ── Utilidades de datos ─────────────────────────────────────
 function conteo(k) {
   const m = new Map();
-  D.clean.forEach((r) => { const v = String(r[k] ?? '').trim() || 'Sin dato'; m.set(v, (m.get(v) || 0) + 1); });
+  filasFiltradas(k).forEach((r) => { const v = String(r[k] ?? '').trim() || 'Sin dato'; m.set(v, (m.get(v) || 0) + 1); });
   return [...m.entries()].map(([valor, veces]) => ({ valor, veces })).sort((a, b) => b.veces - a.veces);
 }
 const semClass = (v) => (v < 60 ? 'bad' : v < 90 ? 'warn' : 'ok');
@@ -730,7 +774,10 @@ function renderCuadroChart(k, tipo) {
     dibujarFunnel(cv, slices, tipo === 'piramide');
     return;
   }
-  CH[id] = new Chart(cv.getContext('2d'), chartConfig(tipo, slices, true));
+  const cfg = chartConfig(tipo, slices, true);
+  cfg.options.onClick = (evt, els, chart) => { if (els.length) aplicarFiltro(k, chart.data.labels[els[0].index]); };
+  cfg.options.onHover = (evt, els) => { if (evt.native) evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
+  CH[id] = new Chart(cv.getContext('2d'), cfg);
 }
 
 // ════════════════════════════════════════════════════════════
