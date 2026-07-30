@@ -70,9 +70,9 @@ const IC = {
 const TOOLS = [
   { id: 'organizador', on: true,  icon: IC.camara,   name: 'Organizador Fotográfico',
     desc: 'Empareja y clasifica las fotos del inventario por código de activo, con dashboard y reportes.' },
-  { id: 'depurador',   on: true,  icon: IC.datos,    name: 'Depurador de Bases',
+  { id: 'depurador',   on: true,  icon: IC.datos,    name: 'Depurador y análisis de bases de inventario',
     desc: 'Limpia y normaliza bases operativas, evalúa calidad de datos y valida marcas/modelos.' },
-  { id: 'proyectos',   on: false, icon: IC.proyecto, name: 'Gestor de Proyectos de Inventario',
+  { id: 'proyectos',   on: false, icon: IC.proyecto, name: 'Formato de "Diagnóstico de la base contable"',
     desc: 'Planifica y ejecuta los proyectos de levantamiento de activos en campo.' },
   { id: 'entregables', on: false, icon: IC.entrega,  name: 'Generador de Entregables',
     desc: 'Produce la documentación y los entregables del proyecto de forma automatizada.' },
