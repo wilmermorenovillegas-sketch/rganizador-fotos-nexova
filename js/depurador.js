@@ -80,6 +80,10 @@ const TIPOS_GRAF = [
   { v: 'embudo',   t: '▽ Embudo' },
   { v: 'piramide', t: '△ Pirámide' },
 ];
+// Ícono por dimensión (identidad visual de cada cuadro).
+const ICON_DIM = { familia: '🗂️', subfamilia: '🏷️', area: '🏢', sede: '📍', centro: '💰', responsable: '👤', estado: '🩺', ubicacion: '📌', linea: '🏭' };
+/** Tipo de gráfico por defecto según nº de categorías (rompe la monotonía de puras donas). */
+const tipoPorDefecto = (n) => (n > 6 ? 'barrasH' : 'dona');
 // Orden fijo de columnas para el reporte/Excel depurado.
 const ORDEN = ['cod_ubic', 'ubicacion', 'cod_centro', 'centro', 'cod_resp', 'responsable',
   'cod_linea', 'linea', 'bar_antigua', 'bar_padre', 'codigo', 'cod_catalogo', 'descripcion',
@@ -406,9 +410,13 @@ function panelCuadros() {
     <div class="cuadros-wrap">${dims.map((k) => {
     const label = CAMPOS.find((c) => c.k === k).l;
     const { total, arr, list, extra } = cuadroData(k);
-    const tipo = tipoDim[k] || 'dona';
+    if (!tipoDim[k]) tipoDim[k] = tipoPorDefecto(arr.length);
+    const tipo = tipoDim[k];
+    const top = arr[0];
+    const topPct = top && total ? (top.veces / total) * 100 : 0;
     return `<div class="cuadro">
       <div class="cuadro-head">
+        <span class="cuadro-ico">${ICON_DIM[k] || '📊'}</span>
         <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}</span>
         <span class="cuadro-tot">${num(arr.length)} ${arr.length === 1 ? 'categoría' : 'categorías'} · ${num(total)} activos</span>
         <select class="cuadro-tipo" data-k="${k}">${opciones(tipo)}</select>
@@ -418,6 +426,7 @@ function panelCuadros() {
           <div class="cuadro-graf"><canvas id="cq_${k}" width="280" height="280"></canvas>
             <div class="cuadro-center"><b>${num(total)}</b><span>activos</span></div></div>
         </div>
+        ${top ? `<div class="cuadro-insight">🏆 <b>${esc(top.valor)}</b> es la categoría con más activos — concentra el <b>${pct1(topPct)}</b> del total</div>` : ''}
         <div class="cuadro-rank-box">
           <div class="rank-tit">Ranking — de mayor a menor</div>
           <div class="rk-head">
@@ -435,7 +444,7 @@ function panelCuadros() {
       </div>
     </div>`;
   }).join('')}</div>`;
-  dims.forEach((k) => renderCuadroChart(k, tipoDim[k] || 'dona'));
+  dims.forEach((k) => renderCuadroChart(k, tipoDim[k]));
   $('depPanel').querySelectorAll('.cuadro-tipo').forEach((s) => {
     s.onchange = () => { tipoDim[s.dataset.k] = s.value; renderCuadroChart(s.dataset.k, s.value); };
   });
@@ -611,42 +620,46 @@ const etiquetas = {
 function destruirCharts() { for (const k in CH) { CH[k]?.destroy?.(); delete CH[k]; } }
 
 /** Construye la config de Chart.js para un tipo dado (reutilizada en pantalla y export). */
-function chartConfig(tipo, slices) {
+function chartConfig(tipo, slices, animate) {
   const labels = slices.map((s) => s.nombre);
   const data = slices.map((s) => s.veces);
   const colors = slices.map((s) => s.color);
-  const common = { responsive: false, maintainAspectRatio: false, animation: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${num(c.raw ?? c.parsed?.y ?? c.parsed)}` } } } };
+  const tot = data.reduce((s, v) => s + (+v || 0), 0) || 1;
+  const common = { responsive: false, maintainAspectRatio: false,
+    animation: animate ? { duration: 750, easing: 'easeOutQuart' } : false,
+    plugins: { legend: { display: false },
+      tooltip: { padding: 9, titleFont: { size: 12 }, bodyFont: { size: 12 }, boxPadding: 4,
+        callbacks: { label: (c) => { const v = +(c.raw ?? c.parsed?.y ?? c.parsed) || 0; return `  ${num(v)} activos · ${pct1((v / tot) * 100)}`; } } } } };
   const ejes = { x: { grid: { color: '#EEF2F6' }, ticks: { font: { size: 9 }, color: '#64748B' } },
                  y: { grid: { color: '#EEF2F6' }, ticks: { font: { size: 9 }, color: '#64748B' }, beginAtZero: true } };
   if (tipo === 'polar') {
     return { type: 'polarArea', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, backgroundColor: colors.map((c) => c + 'D0'), borderColor: '#fff', borderWidth: 1 }] },
+      data: { labels, datasets: [{ data, backgroundColor: colors.map((c) => c + 'D0'), borderColor: '#fff', borderWidth: 1, hoverOffset: 6 }] },
       options: { ...common, scales: { r: { ticks: { display: false }, grid: { color: '#EEF2F6' }, angleLines: { color: '#EEF2F6' } } } } };
   }
   if (tipo === 'semi') {
     return { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 10 }] },
       options: { ...common, rotation: -90, circumference: 180, cutout: '55%' } };
   }
   if (tipo === 'pastel') {
     return { type: 'pie', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 10 }] },
       options: { ...common } };
   }
   if (tipo === 'barrasV' || tipo === 'barrasH') {
     return { type: 'bar', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false, maxBarThickness: 46 }] },
       options: { ...common, indexAxis: tipo === 'barrasH' ? 'y' : 'x', scales: ejes } };
   }
   if (tipo === 'linea') {
     return { type: 'line', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, borderColor: colors[0], backgroundColor: colors[0] + '33', fill: true, tension: 0.35, pointBackgroundColor: colors[0], pointRadius: 3 }] },
+      data: { labels, datasets: [{ data, borderColor: colors[0], backgroundColor: colors[0] + '33', fill: true, tension: 0.35, pointBackgroundColor: colors[0], pointRadius: 3, pointHoverRadius: 6 }] },
       options: { ...common, scales: ejes } };
   }
   // dona (por defecto)
   return { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 10 }] },
     options: { ...common, cutout: '58%' } };
 }
 
@@ -695,7 +708,7 @@ function renderCuadroChart(k, tipo) {
     dibujarFunnel(cv, slices, tipo === 'piramide');
     return;
   }
-  CH[id] = new Chart(cv.getContext('2d'), chartConfig(tipo, slices));
+  CH[id] = new Chart(cv.getContext('2d'), chartConfig(tipo, slices, true));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -814,10 +827,9 @@ async function cuadroAPng(k, cont) {
     dibujarFunnel(cv, slices, tipo === 'piramide');
     return cv.toDataURL('image/png', 1);
   }
-  const cfg = chartConfig(tipo, slices);
+  const cfg = chartConfig(tipo, slices, false);   // sin animación → Chart.js dibuja síncrono
   cfg.options = { ...cfg.options, plugins: { ...cfg.options.plugins, legend: { display: true, position: 'right', labels: { font: { size: 10 }, boxWidth: 12 } } } };
   const ch = new Chart(cv.getContext('2d'), cfg);
-  await new Promise((r) => requestAnimationFrame(r));
   const img = cv.toDataURL('image/png', 1); ch.destroy();
   return img;
 }
