@@ -23,8 +23,16 @@ const num = (n) => (+n || 0).toLocaleString('es-PE');
 const pct1 = (n) => (+n || 0).toFixed(1) + '%';
 const esc = (t) => String(t ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
-const PALETA = ['#0F766E', '#14B8A6', '#0D9488', '#2DD4BF', '#0891B2', '#0EA5E9',
-                '#6366F1', '#7C3AED', '#DB2777', '#F59E0B', '#DC2626', '#65A30D'];
+// Paletas globales seleccionables por el usuario (pocas, para no saturar).
+const PALETAS = {
+  teal:    { nombre: 'Teal NEXOVA', colores: ['#0F766E', '#14B8A6', '#0D9488', '#2DD4BF', '#0891B2', '#0EA5E9', '#6366F1', '#7C3AED', '#DB2777', '#F59E0B', '#DC2626', '#65A30D'] },
+  azul:    { nombre: 'Azul corporativo', colores: ['#1E3A8A', '#2563EB', '#3B82F6', '#60A5FA', '#0EA5E9', '#38BDF8', '#0891B2', '#155E75', '#1D4ED8', '#93C5FD', '#0C4A6E', '#7DD3FC'] },
+  naranja: { nombre: 'Naranja / Gris', colores: ['#EA7317', '#3B82F6', '#64748B', '#F59E0B', '#2563EB', '#94A3B8', '#FB923C', '#1D4ED8', '#475569', '#FDBA74', '#0891B2', '#CBD5E1'] },
+  multi:   { nombre: 'Multicolor', colores: ['#0F766E', '#F59E0B', '#2563EB', '#DC2626', '#7C3AED', '#65A30D', '#DB2777', '#0891B2', '#EA580C', '#4F46E5', '#16A34A', '#0EA5E9'] },
+  tierra:  { nombre: 'Verde / Tierra', colores: ['#166534', '#4D7C0F', '#CA8A04', '#B45309', '#78350F', '#15803D', '#A16207', '#3F6212', '#92400E', '#65A30D', '#854D0E', '#22C55E'] },
+};
+let paletaActual = 'teal';
+const paleta = () => PALETAS[paletaActual].colores;
 const GRIS = '#CBD5E1';
 
 /** Campos canónicos y sus pistas de detección (genéricos, multi-base). */
@@ -43,6 +51,8 @@ const CAMPOS = [
   { k: 'responsable',  l: 'Responsable',     hints: ['descripcion responsable', 'desc responsable', 'descresponsable', 'responsable', 'custodio', 'usuario asignado', 'asignado'] },
   { k: 'cod_familia',  l: 'Cód. Familia',    hints: ['codigo familia', 'cod familia', 'codfamilia'] },
   { k: 'familia',      l: 'Familia',         hints: ['descripcion familia', 'descripcion de familia', 'desc familia', 'descfamilia', 'familia', 'grupo', 'rubro', 'clase', 'categoria'] },
+  { k: 'cod_subfam',   l: 'Cód. Subfamilia', hints: ['codigo subfamilia', 'codigo sub familia', 'cod subfamilia', 'codsubfamilia'] },
+  { k: 'subfamilia',   l: 'Subfamilia (tipo)', hints: ['descripcion subfamilia', 'descripcion sub familia', 'desc subfamilia', 'descsubfamilia', 'subfamilia', 'sub familia', 'subgrupo', 'sub grupo', 'subclase', 'sub clase', 'subcategoria', 'sub categoria', 'tipo de activo', 'tipo activo', 'tipo de bien', 'tipo bien', 'tipo'] },
   { k: 'cod_catalogo', l: 'Cód. Catálogo',   hints: ['codigo catalogo', 'codigo de catalogo', 'cod catalogo', 'codcatalogo'] },
   { k: 'cod_linea',    l: 'Cód. Línea',      hints: ['codigo linea produccion', 'cod linea produccion', 'codigo linea', 'cod linea', 'codlineaproduccion'] },
   { k: 'linea',        l: 'Línea',           hints: ['descripcion linea produccion', 'desc linea produccion', 'descripcion linea', 'linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
@@ -57,7 +67,19 @@ const CAMPOS = [
   { k: 'observacion',  l: 'Observaciones',   hints: ['observaciones', 'observacion', 'nota', 'glosa'] },
 ];
 // Dimensiones para los cuadros resumen (se muestran las detectadas, en orden).
-const DIMS_CUADROS = ['sede', 'area', 'centro', 'responsable', 'familia', 'estado', 'ubicacion', 'linea'];
+const DIMS_CUADROS = ['familia', 'subfamilia', 'area', 'sede', 'centro', 'responsable', 'estado', 'ubicacion', 'linea'];
+// Modelos de gráfico que el usuario puede elegir en cada cuadro.
+const TIPOS_GRAF = [
+  { v: 'dona',     t: '◕ Dona' },
+  { v: 'semi',     t: '◗ Semicírculo' },
+  { v: 'pastel',   t: '● Pastel' },
+  { v: 'barrasV',  t: '▮ Barras verticales' },
+  { v: 'barrasH',  t: '▬ Barras horizontales' },
+  { v: 'linea',    t: '∿ Línea / Área' },
+  { v: 'polar',    t: '✳ Área polar' },
+  { v: 'embudo',   t: '▽ Embudo' },
+  { v: 'piramide', t: '△ Pirámide' },
+];
 // Orden fijo de columnas para el reporte/Excel depurado.
 const ORDEN = ['cod_ubic', 'ubicacion', 'cod_centro', 'centro', 'cod_resp', 'responsable',
   'cod_linea', 'linea', 'bar_antigua', 'bar_padre', 'codigo', 'cod_catalogo', 'descripcion',
@@ -91,6 +113,8 @@ function init() {
   $('depReset').onclick = reset;
   $('depXlsClean').onclick = exportarExcelDepurado;
   $('depXlsCalidad').onclick = exportarExcelCalidad;
+  $('depXlsDash').onclick = exportarExcelDashboard;
+  $('depWordDash').onclick = exportarWordDashboard;
   $('depPdf').onclick = exportarPDF;
 }
 
@@ -355,10 +379,11 @@ function cuadroData(k) {
   const TOP = 8;
   const top = arr.slice(0, TOP);
   const restoSum = arr.slice(TOP).reduce((s, x) => s + x.veces, 0);
-  const slices = top.map((x, i) => ({ nombre: x.valor, veces: x.veces, color: PALETA[i % PALETA.length] }));
+  const PAL = paleta();
+  const slices = top.map((x, i) => ({ nombre: x.valor, veces: x.veces, color: PAL[i % PAL.length] }));
   if (restoSum > 0) slices.push({ nombre: `Otros (${arr.length - TOP})`, veces: restoSum, color: GRIS });
   const maxV = arr[0] ? arr[0].veces : 1;
-  const list = arr.slice(0, 12).map((x, i) => ({ n: i + 1, nombre: x.valor, veces: x.veces, pct: (x.veces / total) * 100, rel: (x.veces / maxV) * 100, color: i < TOP ? PALETA[i % PALETA.length] : '#94A3B8' }));
+  const list = arr.slice(0, 12).map((x, i) => ({ n: i + 1, nombre: x.valor, veces: x.veces, pct: (x.veces / total) * 100, rel: (x.veces / maxV) * 100, color: i < TOP ? PAL[i % PAL.length] : '#94A3B8' }));
   return { arr, total, slices, list, extra: Math.max(0, arr.length - 12) };
 }
 
@@ -369,7 +394,16 @@ function panelCuadros() {
     return;
   }
   const op = (v, sel, t) => `<option value="${v}"${sel === v ? ' selected' : ''}>${t}</option>`;
-  $('depPanel').innerHTML = `<div class="cuadros-wrap">${dims.map((k) => {
+  const opciones = (tipo) => TIPOS_GRAF.map((g) => op(g.v, tipo, g.t)).join('');
+  const opPal = Object.entries(PALETAS).map(([k, p]) => `<option value="${k}"${k === paletaActual ? ' selected' : ''}>${p.nombre}</option>`).join('');
+  $('depPanel').innerHTML = `
+    <div class="dash-tools">
+      <div class="dash-tools-l"><b>${num(dims.length)}</b> dimensiones · <b>${num(D.M.total)}</b> activos analizados</div>
+      <label class="dash-pal">🎨 Colores
+        <select id="selPaleta">${opPal}</select>
+      </label>
+    </div>
+    <div class="cuadros-wrap">${dims.map((k) => {
     const label = CAMPOS.find((c) => c.k === k).l;
     const { total, arr, list, extra } = cuadroData(k);
     const tipo = tipoDim[k] || 'dona';
@@ -377,9 +411,7 @@ function panelCuadros() {
       <div class="cuadro-head">
         <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}</span>
         <span class="cuadro-tot">${num(arr.length)} ${arr.length === 1 ? 'categoría' : 'categorías'} · ${num(total)} activos</span>
-        <select class="cuadro-tipo" data-k="${k}">
-          ${op('dona', tipo, '◕ Dona')}${op('polar', tipo, '✳ Área polar')}${op('semi', tipo, '◗ Semicírculo')}
-        </select>
+        <select class="cuadro-tipo" data-k="${k}">${opciones(tipo)}</select>
       </div>
       <div class="cuadro-body">
         <div class="cuadro-graf-box">
@@ -388,6 +420,10 @@ function panelCuadros() {
         </div>
         <div class="cuadro-rank-box">
           <div class="rank-tit">Ranking — de mayor a menor</div>
+          <div class="rk-head">
+            <span class="rk-n">N°</span><span></span>
+            <span>${esc(label)}</span><span class="rk-val">Activos · %</span>
+          </div>
           ${list.map((it) => `<div class="rk-row">
             <span class="rk-n">${it.n}</span><span class="rk-sw" style="background:${it.color}"></span>
             <span class="rk-name" title="${esc(it.nombre)}">${esc(it.nombre)}</span>
@@ -403,6 +439,7 @@ function panelCuadros() {
   $('depPanel').querySelectorAll('.cuadro-tipo').forEach((s) => {
     s.onchange = () => { tipoDim[s.dataset.k] = s.value; renderCuadroChart(s.dataset.k, s.value); };
   });
+  $('selPaleta').onchange = (e) => { paletaActual = e.target.value; panelCuadros(); };
 }
 
 function panelCalidad() {
@@ -573,34 +610,92 @@ const etiquetas = {
 
 function destruirCharts() { for (const k in CH) { CH[k]?.destroy?.(); delete CH[k]; } }
 
-/** Renderiza el gráfico de un cuadro en el tipo elegido: dona, área polar o semicírculo. */
+/** Construye la config de Chart.js para un tipo dado (reutilizada en pantalla y export). */
+function chartConfig(tipo, slices) {
+  const labels = slices.map((s) => s.nombre);
+  const data = slices.map((s) => s.veces);
+  const colors = slices.map((s) => s.color);
+  const common = { responsive: false, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${num(c.raw ?? c.parsed?.y ?? c.parsed)}` } } } };
+  const ejes = { x: { grid: { color: '#EEF2F6' }, ticks: { font: { size: 9 }, color: '#64748B' } },
+                 y: { grid: { color: '#EEF2F6' }, ticks: { font: { size: 9 }, color: '#64748B' }, beginAtZero: true } };
+  if (tipo === 'polar') {
+    return { type: 'polarArea', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, backgroundColor: colors.map((c) => c + 'D0'), borderColor: '#fff', borderWidth: 1 }] },
+      options: { ...common, scales: { r: { ticks: { display: false }, grid: { color: '#EEF2F6' }, angleLines: { color: '#EEF2F6' } } } } };
+  }
+  if (tipo === 'semi') {
+    return { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+      options: { ...common, rotation: -90, circumference: 180, cutout: '55%' } };
+  }
+  if (tipo === 'pastel') {
+    return { type: 'pie', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+      options: { ...common } };
+  }
+  if (tipo === 'barrasV' || tipo === 'barrasH') {
+    return { type: 'bar', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+      options: { ...common, indexAxis: tipo === 'barrasH' ? 'y' : 'x', scales: ejes } };
+  }
+  if (tipo === 'linea') {
+    return { type: 'line', plugins: [fondoBlanco, etiquetas],
+      data: { labels, datasets: [{ data, borderColor: colors[0], backgroundColor: colors[0] + '33', fill: true, tension: 0.35, pointBackgroundColor: colors[0], pointRadius: 3 }] },
+      options: { ...common, scales: ejes } };
+  }
+  // dona (por defecto)
+  return { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    options: { ...common, cutout: '58%' } };
+}
+
+/** Dibujo propio de embudo / pirámide (Chart.js no los trae). Segmentos apilados. */
+function dibujarFunnel(cv, slices, invertido) {
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const W = cv.width, H = cv.height, padX = 14, padY = 12;
+  const seg = slices.filter((s) => s.veces > 0);
+  const n = seg.length; if (!n) return;
+  const maxW = W - padX * 2, rowH = (H - padY * 2) / n, cx = W / 2, maxV = seg[0].veces || 1;
+  const wOf = (i) => {
+    // Embudo: ancho ∝ valor (grande arriba). Pirámide: ancho crece hacia abajo.
+    const frac = invertido ? (n - i) / n : Math.max(0.14, seg[i].veces / maxV);
+    return Math.max(18, maxW * frac);
+  };
+  for (let i = 0; i < n; i++) {
+    const y = padY + rowH * i;
+    const wTop = wOf(i);
+    const wBot = i < n - 1 ? wOf(i + 1) : (invertido ? wTop : wTop * 0.55);
+    ctx.beginPath();
+    ctx.moveTo(cx - wTop / 2, y);
+    ctx.lineTo(cx + wTop / 2, y);
+    ctx.lineTo(cx + wBot / 2, y + rowH - 3);
+    ctx.lineTo(cx - wBot / 2, y + rowH - 3);
+    ctx.closePath();
+    ctx.fillStyle = seg[i].color; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.font = '700 11px "DM Sans", system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(num(seg[i].veces), cx, y + rowH / 2);
+    ctx.fillStyle = '#1E293B'; ctx.fillText(num(seg[i].veces), cx, y + rowH / 2);
+  }
+}
+
+/** Renderiza el gráfico de un cuadro en el tipo elegido. */
 function renderCuadroChart(k, tipo) {
   const id = `cq_${k}`;
   if (CH[id]) { CH[id].destroy(); delete CH[id]; }
   const cv = $(id); if (!cv) return;
   const { slices } = cuadroData(k);
-  const labels = slices.map((s) => s.nombre);
-  const data = slices.map((s) => s.veces);
-  const colors = slices.map((s) => s.color);
-  const common = { responsive: false, maintainAspectRatio: false, animation: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${num(c.raw)}` } } } };
-  let cfg;
-  if (tipo === 'polar') {
-    cfg = { type: 'polarArea', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, backgroundColor: colors.map((c) => c + 'D0'), borderColor: '#fff', borderWidth: 1 }] },
-      options: { ...common, scales: { r: { ticks: { display: false }, grid: { color: '#EEF2F6' }, angleLines: { color: '#EEF2F6' } } } } };
-  } else if (tipo === 'semi') {
-    cfg = { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
-      options: { ...common, rotation: -90, circumference: 180, cutout: '55%' } };
-  } else {
-    cfg = { type: 'doughnut', plugins: [fondoBlanco, etiquetas],
-      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
-      options: { ...common, cutout: '58%' } };
-  }
-  CH[id] = new Chart(cv.getContext('2d'), cfg);
   const center = cv.parentElement.querySelector('.cuadro-center');
   if (center) center.style.display = (tipo === 'dona') ? 'flex' : 'none';
+  if (tipo === 'embudo' || tipo === 'piramide') {
+    dibujarFunnel(cv, slices, tipo === 'piramide');
+    return;
+  }
+  CH[id] = new Chart(cv.getContext('2d'), chartConfig(tipo, slices));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -708,6 +803,100 @@ async function exportarAlertasExcel() {
   wa.views = [{ state: 'frozen', ySplit: 1 }];
   D.alertas.forEach((a) => wa.addRow({ n: a.n, f: a.fila, c: a.codigo, d: a.descripcion, m: a.marca, mo: a.modelo, u: a.ubicacion, mt: a.motivo }));
   bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Sin_Marca_Modelo_${D.nombre}.xlsx`);
+}
+
+/** Renderiza un cuadro a PNG respetando el tipo elegido (para incrustar en Word). */
+async function cuadroAPng(k, cont) {
+  const { slices } = cuadroData(k);
+  const tipo = tipoDim[k] || 'dona';
+  const cv = document.createElement('canvas'); cv.width = 460; cv.height = 340; cont.appendChild(cv);
+  if (tipo === 'embudo' || tipo === 'piramide') {
+    dibujarFunnel(cv, slices, tipo === 'piramide');
+    return cv.toDataURL('image/png', 1);
+  }
+  const cfg = chartConfig(tipo, slices);
+  cfg.options = { ...cfg.options, plugins: { ...cfg.options.plugins, legend: { display: true, position: 'right', labels: { font: { size: 10 }, boxWidth: 12 } } } };
+  const ch = new Chart(cv.getContext('2d'), cfg);
+  await new Promise((r) => requestAnimationFrame(r));
+  const img = cv.toDataURL('image/png', 1); ch.destroy();
+  return img;
+}
+
+/** Excel del dashboard: una hoja con el ranking de cada dimensión (Familia, Subfamilia, Área, Sede…). */
+async function exportarExcelDashboard() {
+  if (!D.clean.length) { alert('Primero procesa una base.'); return; }
+  const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
+  if (!dims.length) { alert('No se detectaron dimensiones para el dashboard.'); return; }
+  const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
+  const ws = wb.addWorksheet('DASHBOARD', { views: [{ state: 'frozen', ySplit: 2 }] });
+  ws.getColumn(1).width = 7; ws.getColumn(2).width = 44; ws.getColumn(3).width = 14; ws.getColumn(4).width = 12;
+  ws.mergeCells(1, 1, 1, 4);
+  const t = ws.getCell(1, 1);
+  t.value = `DASHBOARD DE ACTIVOS · ${(D.nombre || '').toUpperCase()}`;
+  t.font = { bold: true, size: 14, color: { argb: 'FF1E293B' } };
+  ws.mergeCells(2, 1, 2, 4);
+  const st = ws.getCell(2, 1);
+  st.value = `${num(D.M.total)} activos · ${dims.length} dimensiones · ${new Date().toLocaleString('es-PE')}`;
+  st.font = { size: 10, color: { argb: 'FF64748B' } };
+  let row = 4;
+  dims.forEach((k) => {
+    const label = CAMPOS.find((c) => c.k === k).l;
+    const { arr, total } = cuadroData(k);
+    ws.mergeCells(row, 1, row, 4);
+    const h = ws.getCell(row, 1);
+    h.value = `ACTIVOS POR ${label.toUpperCase()}   —   ${num(arr.length)} categorías · ${num(total)} activos`;
+    h.font = { bold: true, size: 11, color: { argb: 'FF0F766E' } };
+    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+    row++;
+    const hr = ws.getRow(row);
+    hr.values = ['N°', label.toUpperCase(), 'ACTIVOS', '%']; styleHead(hr); row++;
+    arr.forEach((x, i) => {
+      const r = ws.getRow(row);
+      r.getCell(1).value = i + 1; r.getCell(2).value = x.valor; r.getCell(3).value = x.veces;
+      r.getCell(4).value = total ? +((x.veces / total) * 100).toFixed(1) : 0;
+      r.getCell(3).alignment = { horizontal: 'right' }; r.getCell(4).alignment = { horizontal: 'right' };
+      row++;
+    });
+    const tr = ws.getRow(row);
+    tr.getCell(2).value = 'TOTAL'; tr.getCell(3).value = total; tr.getCell(4).value = 100;
+    tr.font = { bold: true }; tr.getCell(3).alignment = { horizontal: 'right' }; tr.getCell(4).alignment = { horizontal: 'right' };
+    row += 2;
+  });
+  bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Dashboard_${D.nombre}.xlsx`);
+}
+
+/** Word (.doc) del dashboard: gráfico + tabla por dimensión. Abre en MS Word. */
+async function exportarWordDashboard() {
+  if (!D.clean.length) { alert('Primero procesa una base.'); return; }
+  const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
+  if (!dims.length) { alert('No se detectaron dimensiones para el dashboard.'); return; }
+  const cont = document.createElement('div');
+  cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
+  document.body.appendChild(cont);
+  let secciones = '';
+  try {
+    for (const k of dims) {
+      const label = CAMPOS.find((c) => c.k === k).l;
+      const { arr, total } = cuadroData(k);
+      const img = await cuadroAPng(k, cont);
+      const filas = arr.map((x, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${esc(x.valor)}</td><td style="text-align:right">${num(x.veces)}</td><td style="text-align:right">${pct1(total ? (x.veces / total) * 100 : 0)}</td></tr>`).join('');
+      secciones += `<h2 style="color:#0F766E;font-family:Calibri,sans-serif">Activos por ${esc(label.toLowerCase())}</h2>
+        <p style="color:#64748B;font-family:Calibri,sans-serif;margin:0 0 6px">${num(arr.length)} categorías · ${num(total)} activos</p>
+        <img src="${img}" width="440"/>
+        <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;font-family:Calibri,sans-serif;font-size:11px;margin:8px 0 18px">
+          <thead><tr style="background:#1E293B;color:#fff"><th style="width:36px">N°</th><th>${esc(label)}</th><th style="width:70px">Activos</th><th style="width:60px">%</th></tr></thead>
+          <tbody>${filas}<tr style="font-weight:bold;background:#F1F5F9"><td></td><td>TOTAL</td><td style="text-align:right">${num(total)}</td><td style="text-align:right">100%</td></tr></tbody>
+        </table>`;
+    }
+  } finally { cont.remove(); }
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Dashboard de activos</title></head>
+    <body style="font-family:Calibri,sans-serif">
+      <h1 style="color:#1E293B;margin-bottom:2px">Dashboard de activos</h1>
+      <p style="color:#64748B;margin-top:0">${esc(D.nombre)} · ${new Date().toLocaleDateString('es-PE')} · ${num(D.M.total)} activos · depurado con NEXOVA Suite</p>
+      <hr/>
+      ${secciones}
+    </body></html>`;
+  bajar(new Blob(['﻿' + html], { type: 'application/msword' }), `Dashboard_${D.nombre}.doc`);
 }
 
 async function exportarPDF() {

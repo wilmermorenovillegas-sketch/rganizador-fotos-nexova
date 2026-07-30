@@ -246,6 +246,11 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
 .dep-search{padding:7px 11px;border:1px solid var(--gris-200);border-radius:7px;font-size:12.5px;font-family:'DM Sans',sans-serif;width:240px;max-width:100%}
 .mini-note{font-size:11.5px;color:var(--gris);margin-top:8px}
 /* Cuadros resumen por dimensión — un cuadro por fila, espacioso */
+.dash-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--gris-100);border:1px solid var(--gris-200);border-radius:12px;padding:11px 16px;margin-bottom:16px}
+.dash-tools-l{font-size:12.5px;color:#64748B}.dash-tools-l b{color:var(--slate);font-family:'Sora',sans-serif}
+.dash-pal{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--slate)}
+.dash-pal select{padding:6px 10px;border:1px solid var(--gris-200);border-radius:7px;font-size:12.5px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--slate);cursor:pointer}
+.rk-head{display:grid;grid-template-columns:22px 11px 1fr auto;align-items:center;gap:5px 9px;padding:0 0 6px;border-bottom:1px solid var(--gris-200);margin-bottom:2px;font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em}
 .cuadros-wrap{display:flex;flex-direction:column;gap:16px}
 .cuadro{background:var(--blanco);border:1px solid var(--gris-200);border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(15,23,42,.04)}
 .cuadro-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
@@ -520,6 +525,8 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
           <div class="desc-btns">
             <button class="b-desc teal" id="depXlsClean">⬇ Excel depurado</button>
             <button class="b-desc teal" id="depXlsCalidad">⬇ Excel calidad</button>
+            <button class="b-desc teal" id="depXlsDash">⬇ Excel dashboard</button>
+            <button class="b-desc" id="depWordDash">⬇ Word dashboard</button>
             <button class="b-desc" id="depPdf">⬇ Informe PDF</button>
             <button class="b-desc" id="depReset">↻ Otra base</button>
           </div>
