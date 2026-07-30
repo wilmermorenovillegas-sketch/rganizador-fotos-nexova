@@ -82,8 +82,14 @@ const TIPOS_GRAF = [
 ];
 // Ícono por dimensión (identidad visual de cada cuadro).
 const ICON_DIM = { familia: '🗂️', subfamilia: '🏷️', area: '🏢', sede: '📍', centro: '💰', responsable: '👤', estado: '🩺', ubicacion: '📌', linea: '🏭' };
-/** Tipo de gráfico por defecto según nº de categorías (rompe la monotonía de puras donas). */
-const tipoPorDefecto = (n) => (n > 6 ? 'barrasH' : 'dona');
+// Dimensiones que SIEMPRE se muestran, aunque la columna no esté mapeada (se ven en 0).
+const CORE_DIMS = ['familia', 'subfamilia', 'area', 'sede'];
+// Variedad de tipos para que cada cuadro salga distinto por defecto (sin repetir).
+const TIPOS_VARIADOS = ['barrasH', 'dona', 'pastel', 'barrasV', 'polar', 'semi', 'embudo', 'linea', 'piramide'];
+/** Dimensiones a mostrar: las core siempre + las demás si su columna está mapeada. */
+function dimsDashboard() { return DIMS_CUADROS.filter((k) => CORE_DIMS.includes(k) || D.cols[k]); }
+/** Una dimensión está "vacía" si no tiene ninguna categoría real (solo "Sin dato" o nada). */
+function dimVacio(k) { return !conteo(k).some((x) => x.valor && x.valor !== 'Sin dato'); }
 // Orden fijo de columnas para el reporte/Excel depurado.
 const ORDEN = ['cod_ubic', 'ubicacion', 'cod_centro', 'centro', 'cod_resp', 'responsable',
   'cod_linea', 'linea', 'bar_antigua', 'bar_padre', 'codigo', 'cod_catalogo', 'descripcion',
@@ -392,11 +398,13 @@ function cuadroData(k) {
 }
 
 function panelCuadros() {
-  const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
+  const dims = dimsDashboard();
   if (!dims.length) {
-    $('depPanel').innerHTML = `<div class="aviso warn"><span>ℹ️</span><div>No se detectaron dimensiones para resumir (Sede, Área, Centro de costo, Responsable…). Revisa el mapeo de columnas.</div></div>`;
+    $('depPanel').innerHTML = `<div class="aviso warn"><span>ℹ️</span><div>No se detectaron dimensiones para resumir. Revisa el mapeo de columnas.</div></div>`;
     return;
   }
+  // Tipo por defecto variado (sin repetir) para cada dimensión.
+  dims.forEach((k, i) => { if (!tipoDim[k]) tipoDim[k] = TIPOS_VARIADOS[i % TIPOS_VARIADOS.length]; });
   const op = (v, sel, t) => `<option value="${v}"${sel === v ? ' selected' : ''}>${t}</option>`;
   const opciones = (tipo) => TIPOS_GRAF.map((g) => op(g.v, tipo, g.t)).join('');
   const opPal = Object.entries(PALETAS).map(([k, p]) => `<option value="${k}"${k === paletaActual ? ' selected' : ''}>${p.nombre}</option>`).join('');
@@ -409,9 +417,23 @@ function panelCuadros() {
     </div>
     <div class="cuadros-wrap">${dims.map((k) => {
     const label = CAMPOS.find((c) => c.k === k).l;
-    const { total, arr, list, extra } = cuadroData(k);
-    if (!tipoDim[k]) tipoDim[k] = tipoPorDefecto(arr.length);
     const tipo = tipoDim[k];
+    if (dimVacio(k)) {
+      return `<div class="cuadro cuadro-vacio">
+        <div class="cuadro-head">
+          <span class="cuadro-ico">${ICON_DIM[k] || '📊'}</span>
+          <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}</span>
+          <span class="cuadro-tot">0 activos</span>
+        </div>
+        <div class="cuadro-body">
+          <div class="cuadro-graf-box cuadro-vacio-box">
+            <div class="vacio-msg"><div class="vacio-n">0</div><div class="vacio-t">Sin datos para esta dimensión</div>
+              <div class="vacio-hint">La columna <b>${esc(label)}</b> no está mapeada o está vacía. Mapéala en la pantalla de detección para ver este gráfico.</div></div>
+          </div>
+        </div>
+      </div>`;
+    }
+    const { total, arr, list, extra } = cuadroData(k);
     const top = arr[0];
     const topPct = top && total ? (top.veces / total) * 100 : 0;
     return `<div class="cuadro">
@@ -444,7 +466,7 @@ function panelCuadros() {
       </div>
     </div>`;
   }).join('')}</div>`;
-  dims.forEach((k) => renderCuadroChart(k, tipoDim[k]));
+  dims.forEach((k) => { if (!dimVacio(k)) renderCuadroChart(k, tipoDim[k]); });
   $('depPanel').querySelectorAll('.cuadro-tipo').forEach((s) => {
     s.onchange = () => { tipoDim[s.dataset.k] = s.value; renderCuadroChart(s.dataset.k, s.value); };
   });
@@ -819,16 +841,17 @@ async function exportarAlertasExcel() {
 }
 
 /** Renderiza un cuadro a PNG respetando el tipo elegido (para incrustar en Word). */
-async function cuadroAPng(k, cont) {
+function cuadroAPng(k, cont, opts = {}) {
+  const { legend = true, w = 460, h = 340 } = opts;
   const { slices } = cuadroData(k);
   const tipo = tipoDim[k] || 'dona';
-  const cv = document.createElement('canvas'); cv.width = 460; cv.height = 340; cont.appendChild(cv);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cont.appendChild(cv);
   if (tipo === 'embudo' || tipo === 'piramide') {
     dibujarFunnel(cv, slices, tipo === 'piramide');
     return cv.toDataURL('image/png', 1);
   }
   const cfg = chartConfig(tipo, slices, false);   // sin animación → Chart.js dibuja síncrono
-  cfg.options = { ...cfg.options, plugins: { ...cfg.options.plugins, legend: { display: true, position: 'right', labels: { font: { size: 10 }, boxWidth: 12 } } } };
+  if (legend) cfg.options = { ...cfg.options, plugins: { ...cfg.options.plugins, legend: { display: true, position: 'right', labels: { font: { size: 10 }, boxWidth: 12 } } } };
   const ch = new Chart(cv.getContext('2d'), cfg);
   const img = cv.toDataURL('image/png', 1); ch.destroy();
   return img;
@@ -837,8 +860,11 @@ async function cuadroAPng(k, cont) {
 /** Excel del dashboard: una hoja con el ranking de cada dimensión (Familia, Subfamilia, Área, Sede…). */
 async function exportarExcelDashboard() {
   if (!D.clean.length) { alert('Primero procesa una base.'); return; }
-  const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
-  if (!dims.length) { alert('No se detectaron dimensiones para el dashboard.'); return; }
+  const dims = dimsDashboard().filter((k) => !dimVacio(k));
+  if (!dims.length) { alert('No hay dimensiones con datos para el dashboard.'); return; }
+  const cont = document.createElement('div');
+  cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
+  document.body.appendChild(cont);
   const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
   const ws = wb.addWorksheet('DASHBOARD', { views: [{ state: 'frozen', ySplit: 2 }] });
   ws.getColumn(1).width = 7; ws.getColumn(2).width = 44; ws.getColumn(3).width = 14; ws.getColumn(4).width = 12;
@@ -851,37 +877,48 @@ async function exportarExcelDashboard() {
   st.value = `${num(D.M.total)} activos · ${dims.length} dimensiones · ${new Date().toLocaleString('es-PE')}`;
   st.font = { size: 10, color: { argb: 'FF64748B' } };
   let row = 4;
-  dims.forEach((k) => {
-    const label = CAMPOS.find((c) => c.k === k).l;
-    const { arr, total } = cuadroData(k);
-    ws.mergeCells(row, 1, row, 4);
-    const h = ws.getCell(row, 1);
-    h.value = `ACTIVOS POR ${label.toUpperCase()}   —   ${num(arr.length)} categorías · ${num(total)} activos`;
-    h.font = { bold: true, size: 11, color: { argb: 'FF0F766E' } };
-    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-    row++;
-    const hr = ws.getRow(row);
-    hr.values = ['N°', label.toUpperCase(), 'ACTIVOS', '%']; styleHead(hr); row++;
-    arr.forEach((x, i) => {
-      const r = ws.getRow(row);
-      r.getCell(1).value = i + 1; r.getCell(2).value = x.valor; r.getCell(3).value = x.veces;
-      r.getCell(4).value = total ? +((x.veces / total) * 100).toFixed(1) : 0;
-      r.getCell(3).alignment = { horizontal: 'right' }; r.getCell(4).alignment = { horizontal: 'right' };
+  try {
+    dims.forEach((k) => {
+      const label = CAMPOS.find((c) => c.k === k).l;
+      const { arr, total } = cuadroData(k);
+      const startRow = row;
+      ws.mergeCells(row, 1, row, 4);
+      const h = ws.getCell(row, 1);
+      h.value = `ACTIVOS POR ${label.toUpperCase()}   —   ${num(arr.length)} categorías · ${num(total)} activos`;
+      h.font = { bold: true, size: 11, color: { argb: 'FF0F766E' } };
+      h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
       row++;
+      const hr = ws.getRow(row);
+      hr.values = ['N°', label.toUpperCase(), 'ACTIVOS', '%']; styleHead(hr); row++;
+      arr.forEach((x, i) => {
+        const r = ws.getRow(row);
+        r.getCell(1).value = i + 1; r.getCell(2).value = x.valor; r.getCell(3).value = x.veces;
+        r.getCell(4).value = total ? +((x.veces / total) * 100).toFixed(1) : 0;
+        r.getCell(3).alignment = { horizontal: 'right' }; r.getCell(4).alignment = { horizontal: 'right' };
+        row++;
+      });
+      const tr = ws.getRow(row);
+      tr.getCell(2).value = 'TOTAL'; tr.getCell(3).value = total; tr.getCell(4).value = 100;
+      tr.font = { bold: true }; tr.getCell(3).alignment = { horizontal: 'right' }; tr.getCell(4).alignment = { horizontal: 'right' };
+      row++;
+      // Gráfico (según el tipo elegido) a la derecha de la tabla
+      try {
+        const img = cuadroAPng(k, cont, { legend: true, w: 480, h: 320 });
+        const imgId = wb.addImage({ base64: img.split(',')[1], extension: 'png' });
+        ws.addImage(imgId, { tl: { col: 5, row: startRow - 1 }, ext: { width: 380, height: 250 } });
+      } catch { /* sin gráfico */ }
+      const blockRows = Math.max(row - startRow, 14);   // deja sitio para la imagen
+      row = startRow + blockRows + 1;
     });
-    const tr = ws.getRow(row);
-    tr.getCell(2).value = 'TOTAL'; tr.getCell(3).value = total; tr.getCell(4).value = 100;
-    tr.font = { bold: true }; tr.getCell(3).alignment = { horizontal: 'right' }; tr.getCell(4).alignment = { horizontal: 'right' };
-    row += 2;
-  });
+  } finally { cont.remove(); }
   bajar(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Dashboard_${D.nombre}.xlsx`);
 }
 
 /** Word (.doc) del dashboard: gráfico + tabla por dimensión. Abre en MS Word. */
 async function exportarWordDashboard() {
   if (!D.clean.length) { alert('Primero procesa una base.'); return; }
-  const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
-  if (!dims.length) { alert('No se detectaron dimensiones para el dashboard.'); return; }
+  const dims = dimsDashboard().filter((k) => !dimVacio(k));
+  if (!dims.length) { alert('No hay dimensiones con datos para el dashboard.'); return; }
   const cont = document.createElement('div');
   cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
   document.body.appendChild(cont);
@@ -948,23 +985,17 @@ async function exportarPDF() {
 
   const cont = document.createElement('div'); cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none'; document.body.appendChild(cont);
   try {
-    const dims = DIMS_CUADROS.filter((k) => D.cols[k]);
+    const dims = dimsDashboard().filter((k) => !dimVacio(k));
     for (const k of dims) {
       if (y > 200) { doc.addPage(); y = 20; }
       const label = CAMPOS.find((c) => c.k === k).l;
-      const { slices, list, total, extra } = cuadroData(k);
+      const { list, total, extra } = cuadroData(k);
       doc.setFillColor(15, 118, 110); doc.rect(M, y - 4, 3, 6, 'F');
       doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30, 41, 59); doc.text(`Activos por ${label.toLowerCase()}`, M + 6, y + 1); y += 8;
 
-      // Dona con etiquetas (canvas oculto)
-      const cv = document.createElement('canvas'); cv.width = 460; cv.height = 460; cont.appendChild(cv);
-      const ch = new Chart(cv.getContext('2d'), {
-        type: 'doughnut', plugins: [fondoBlanco, etiquetas],
-        data: { labels: slices.map((s) => s.nombre), datasets: [{ data: slices.map((s) => s.veces), backgroundColor: slices.map((s) => s.color), borderWidth: 2, borderColor: '#fff' }] },
-        options: { responsive: false, maintainAspectRatio: false, animation: false, cutout: '55%', plugins: { legend: { display: false } } },
-      });
-      await new Promise((r) => requestAnimationFrame(r));
-      doc.addImage(cv.toDataURL('image/png', 1), 'PNG', M, y, 58, 58); ch.destroy();
+      // Gráfico en el tipo elegido por el usuario (canvas oculto, render síncrono)
+      const img = cuadroAPng(k, cont, { legend: false, w: 460, h: 460 });
+      doc.addImage(img, 'PNG', M, y, 58, 58);
 
       // Ranking numerado al lado
       doc.autoTable({
