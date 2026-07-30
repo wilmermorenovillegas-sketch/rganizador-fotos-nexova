@@ -79,6 +79,9 @@ const TIPOS_GRAF = [
   { v: 'polar',    t: '✳ Área polar' },
   { v: 'embudo',   t: '▽ Embudo' },
   { v: 'piramide', t: '△ Pirámide' },
+  { v: 'dona3d',   t: '◕ Dona 3D' },
+  { v: 'pastel3d', t: '● Pastel 3D' },
+  { v: 'cono',     t: '🔺 Cono' },
 ];
 // Ícono por dimensión (identidad visual de cada cuadro).
 const ICON_DIM = { familia: '🗂️', subfamilia: '🏷️', area: '🏢', sede: '📍', centro: '💰', responsable: '👤', estado: '🩺', ubicacion: '📌', linea: '🏭' };
@@ -440,6 +443,7 @@ function panelCuadros() {
   }
   // Tipo por defecto variado (sin repetir) para cada dimensión.
   dims.forEach((k, i) => { if (!tipoDim[k]) tipoDim[k] = TIPOS_VARIADOS[i % TIPOS_VARIADOS.length]; });
+  const heroKey = dims.find((k) => !dimVacio(k));   // primer cuadro con datos = destacado
   const op = (v, sel, t) => `<option value="${v}"${sel === v ? ' selected' : ''}>${t}</option>`;
   const opciones = (tipo) => TIPOS_GRAF.map((g) => op(g.v, tipo, g.t)).join('');
   const opPal = Object.entries(PALETAS).map(([k, p]) => `<option value="${k}"${k === paletaActual ? ' selected' : ''}>${p.nombre}</option>`).join('');
@@ -473,20 +477,19 @@ function panelCuadros() {
     const { total, arr, list, extra } = cuadroData(k);
     const top = arr[0];
     const topPct = top && total ? (top.veces / total) * 100 : 0;
-    return `<div class="cuadro">
-      <div class="cuadro-head">
+    const esHero = (k === heroKey);
+    const head = `<div class="cuadro-head">
         <span class="cuadro-ico">${ICON_DIM[k] || '📊'}</span>
-        <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}</span>
+        <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}${esHero ? ' <span class="hero-badge">destacado</span>' : ''}</span>
         <span class="cuadro-tot">${num(arr.length)} ${arr.length === 1 ? 'categoría' : 'categorías'} · ${num(total)} activos</span>
         <select class="cuadro-tipo" data-k="${k}">${opciones(tipo)}</select>
-      </div>
-      <div class="cuadro-body">
-        <div class="cuadro-graf-box">
+      </div>`;
+    const graf = `<div class="cuadro-graf-box">
           <div class="cuadro-graf"><canvas id="cq_${k}" width="280" height="280"></canvas>
             <div class="cuadro-center"><b>${num(total)}</b><span>activos</span></div></div>
-        </div>
-        ${top ? `<div class="cuadro-insight">🏆 <b>${esc(top.valor)}</b> es la categoría con más activos — concentra el <b>${pct1(topPct)}</b> del total</div>` : ''}
-        <div class="cuadro-rank-box">
+        </div>`;
+    const insight = top ? `<div class="cuadro-insight">🏆 <b>${esc(top.valor)}</b> es la categoría con más activos — concentra el <b>${pct1(topPct)}</b> del total</div>` : '';
+    const rank = `<div class="cuadro-rank-box">
           <div class="rank-tit">Ranking — de mayor a menor</div>
           <div class="rk-head">
             <span class="rk-n">N°</span><span></span>
@@ -502,9 +505,11 @@ function panelCuadros() {
             <span class="rk-bar"><i style="width:${it.rel.toFixed(0)}%;background:${it.color}"></i></span>
           </div>`; }).join('')}
           ${extra ? `<div class="rk-more">y ${num(extra)} categorías más…</div>` : ''}
-        </div>
-      </div>
-    </div>`;
+        </div>`;
+    if (esHero) {
+      return `<div class="cuadro cuadro-hero">${head}<div class="cuadro-body cuadro-body-hero">${graf}<div class="cuadro-hero-side">${insight}${rank}</div></div></div>`;
+    }
+    return `<div class="cuadro">${head}<div class="cuadro-body">${graf}${insight}${rank}</div></div>`;
   }).join('')}</div>`;
   dims.forEach((k) => { if (!dimVacio(k)) renderCuadroChart(k, tipoDim[k]); });
   $('depPanel').querySelectorAll('.cuadro-tipo').forEach((s) => {
@@ -762,6 +767,84 @@ function dibujarFunnel(cv, slices, invertido) {
   }
 }
 
+/** Oscurece un color #RRGGBB por un factor (para las paredes del 3D). */
+function oscurecer(hex, f) {
+  const h = String(hex).replace('#', '');
+  const r = Math.round(parseInt(h.slice(0, 2), 16) * f);
+  const g = Math.round(parseInt(h.slice(2, 4), 16) * f);
+  const b = Math.round(parseInt(h.slice(4, 6), 16) * f);
+  return `rgb(${r},${g},${b})`;
+}
+
+/** Pastel/dona pseudo-3D (elipse en perspectiva + pared extruida). Como la imagen infográfica. */
+function dibujar3DPie(cv, slices, donut) {
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const data = slices.filter((s) => s.veces > 0);
+  const total = data.reduce((s, x) => s + x.veces, 0) || 1;
+  const cx = W / 2, cy = H * 0.44, rx = Math.min(W, H) * 0.37, ry = rx * 0.55, depth = Math.max(16, H * 0.085);
+  let a = 0;
+  const segs = data.map((s) => { const ang = (s.veces / total) * Math.PI * 2; const o = { s, start: a, end: a + ang }; a += ang; return o; });
+  // Paredes frontales (mitad inferior de la elipse), por tiras coloreadas.
+  const STEPS = 150;
+  for (let i = 0; i < STEPS; i++) {
+    const t0 = (i / STEPS) * Math.PI, t1 = ((i + 1) / STEPS) * Math.PI, mid = (t0 + t1) / 2;
+    const seg = segs.find((g) => mid >= g.start && mid < g.end); if (!seg) continue;
+    const x0 = cx + rx * Math.cos(t0), y0 = cy + ry * Math.sin(t0);
+    const x1 = cx + rx * Math.cos(t1), y1 = cy + ry * Math.sin(t1);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x1, y1 + depth); ctx.lineTo(x0, y0 + depth); ctx.closePath();
+    ctx.fillStyle = oscurecer(seg.s.color, 0.6); ctx.fill();
+  }
+  // Caras superiores (cuñas).
+  segs.forEach((seg) => {
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.ellipse(cx, cy, rx, ry, 0, seg.start, seg.end); ctx.closePath();
+    ctx.fillStyle = seg.s.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+  if (donut) { ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.5, ry * 0.5, 0, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); }
+  // Etiquetas de cantidad en las cuñas grandes.
+  ctx.font = '700 11px "DM Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  segs.forEach((seg) => {
+    if (seg.end - seg.start < 0.34) return;
+    const m = (seg.start + seg.end) / 2, lr = donut ? 0.75 : 0.6;
+    const x = cx + rx * lr * Math.cos(m), y = cy + ry * lr * Math.sin(m);
+    ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(num(seg.s.veces), x, y);
+    ctx.fillStyle = '#1E293B'; ctx.fillText(num(seg.s.veces), x, y);
+  });
+}
+
+/** Cono segmentado (ápice arriba, base ancha) por valor. */
+function dibujarCono(cv, slices) {
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const seg = slices.filter((s) => s.veces > 0), n = seg.length; if (!n) return;
+  const total = seg.reduce((s, x) => s + x.veces, 0) || 1;
+  const apexY = H * 0.08, baseY = H * 0.88, cx = W / 2, maxW = W * 0.72;
+  const yOf = (p) => apexY + (baseY - apexY) * p, wOf = (p) => maxW * p;
+  ctx.beginPath(); ctx.ellipse(cx, baseY, maxW / 2, maxW * 0.06, 0, 0, Math.PI * 2); ctx.fillStyle = oscurecer(seg[n - 1].color, 0.7); ctx.fill();
+  let cum = 0;
+  seg.forEach((s) => {
+    const p0 = cum, p1 = cum + s.veces / total; cum = p1;
+    const yTop = yOf(p0), yBot = yOf(p1), wTop = wOf(p0), wBot = wOf(p1);
+    ctx.beginPath(); ctx.moveTo(cx - wTop / 2, yTop); ctx.lineTo(cx + wTop / 2, yTop); ctx.lineTo(cx + wBot / 2, yBot); ctx.lineTo(cx - wBot / 2, yBot); ctx.closePath();
+    ctx.fillStyle = s.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    if (p1 - p0 > 0.05) {
+      ctx.font = '700 11px "DM Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(num(s.veces), cx, (yTop + yBot) / 2);
+      ctx.fillStyle = '#1E293B'; ctx.fillText(num(s.veces), cx, (yTop + yBot) / 2);
+    }
+  });
+}
+
+// Tipos con dibujo propio en canvas (no Chart.js).
+const TIPOS_CUSTOM = ['embudo', 'piramide', 'cono', 'dona3d', 'pastel3d'];
+function dibujarCustom(cv, tipo, slices) {
+  if (tipo === 'embudo') return dibujarFunnel(cv, slices, false);
+  if (tipo === 'piramide') return dibujarFunnel(cv, slices, true);
+  if (tipo === 'cono') return dibujarCono(cv, slices);
+  if (tipo === 'dona3d') return dibujar3DPie(cv, slices, true);
+  if (tipo === 'pastel3d') return dibujar3DPie(cv, slices, false);
+}
+
 /** Renderiza el gráfico de un cuadro en el tipo elegido. */
 function renderCuadroChart(k, tipo) {
   const id = `cq_${k}`;
@@ -770,8 +853,8 @@ function renderCuadroChart(k, tipo) {
   const { slices } = cuadroData(k);
   const center = cv.parentElement.querySelector('.cuadro-center');
   if (center) center.style.display = (tipo === 'dona') ? 'flex' : 'none';
-  if (tipo === 'embudo' || tipo === 'piramide') {
-    dibujarFunnel(cv, slices, tipo === 'piramide');
+  if (TIPOS_CUSTOM.includes(tipo)) {
+    dibujarCustom(cv, tipo, slices);
     return;
   }
   const cfg = chartConfig(tipo, slices, true);
@@ -893,8 +976,8 @@ function cuadroAPng(k, cont, opts = {}) {
   const { slices } = cuadroData(k);
   const tipo = tipoDim[k] || 'dona';
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cont.appendChild(cv);
-  if (tipo === 'embudo' || tipo === 'piramide') {
-    dibujarFunnel(cv, slices, tipo === 'piramide');
+  if (TIPOS_CUSTOM.includes(tipo)) {
+    dibujarCustom(cv, tipo, slices);
     return cv.toDataURL('image/png', 1);
   }
   const cfg = chartConfig(tipo, slices, false);   // sin animación → Chart.js dibuja síncrono
