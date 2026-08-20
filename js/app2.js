@@ -25,6 +25,7 @@ import {
 import { soportado, pedirCarpeta, escanearFotos, ejecutarPlan, guardarEnDestino } from './archivos.js';
 import { generarExcel, generarPDF, graficoEstado, graficoCobertura } from './reportes.js';
 import { Depurador } from './depurador.js';
+import { generarCatalogoPPT } from './catalogo.js';
 
 // ── Helpers cortos ──────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -155,6 +156,7 @@ function iniciarOrganizador() {
   $('btnAnalisisPdf').onclick = descargarAnalisisPDF;
   $('btnExcel').onclick = () => descargar(S.blobExcel, `Conciliacion_${S.inv.nombre}.xlsx`);
   $('btnPDF').onclick = () => descargar(S.blobPDF, `Informe_Cobertura_${S.inv.nombre}.pdf`);
+  $('btnCatalogoPpt').onclick = catalogoPPT;
 }
 
 function dragDrop(id, cb) {
@@ -799,6 +801,28 @@ function cardsPDF(doc, y, datos, M, W) {
     doc.roundedRect(x + 3, yy + 13.5, Math.max(0.4, (cw - 6) * (d.activos / maxA)), 2.4, 1, 1, 'F');
   });
   return y + Math.ceil(top.length / cols) * (chh + 4);
+}
+
+// ── Catálogo fotográfico (PPT) ──────────────────────────────
+async function catalogoPPT() {
+  if (!S.plan) { alert('Primero corre la simulación.'); return; }
+  const m = calcularMetricas(S.plan);
+  if (!m.emparejadas) { alert('No hay fotos emparejadas para el catálogo.'); return; }
+  const btn = $('btnCatalogoPpt');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  try {
+    await generarCatalogoPPT(S.plan, S.inv.nombre, (hechos, total) => {
+      btn.textContent = `Generando… ${num(hechos)}/${num(total)}`;
+    });
+    btn.textContent = '✓ Catálogo listo';
+    setTimeout(() => { btn.textContent = orig; }, 2500);
+  } catch (e) {
+    alert('Error generando el catálogo PPT:\n' + e.message);
+    btn.textContent = orig;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ── Utilidades ──────────────────────────────────────────────
