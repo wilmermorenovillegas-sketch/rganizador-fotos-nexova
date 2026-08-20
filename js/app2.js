@@ -49,13 +49,45 @@ const S = {
 
 // Dimensiones del dashboard. Siempre visibles; vacías si no existe la columna.
 const DIMS = [
-  { v: 'familia',    l: 'Familia',            pistas: ['DESCRIPCION DE FAMILIA', 'descripcion de familia', 'familia', 'grupo', 'rubro'] },
-  { v: 'subfamilia', l: 'Subfamilia',         pistas: ['DESCRIPCION DE SUB FAMILIA', 'descripcion de sub familia', 'subfamilia', 'sub familia'] },
-  { v: 'area',       l: 'Área',               pistas: ['DescUbicacion', 'Desc Ubicacion', 'descripcion ubicacion', 'area', 'ubicacion'] },
-  { v: 'sede',       l: 'Sede',               pistas: ['DescCentroCosto', 'Desc Centro Costo', 'centro costo descripcion', 'sede', 'sucursal', 'centro de costo'] },
-  { v: 'estado',     l: 'Estado',             pistas: ['Estado', 'estado', 'condicion', 'situacion'] },
-  { v: 'linea',      l: 'Línea de producción', pistas: ['linea', 'linea produccion', 'linea de produccion', 'proceso', 'planta'] },
+  { v: 'familia',    l: 'Familia',            pistas: ['descripcion de familia', 'descripcion familia', 'descfamilia', 'familia', 'grupo', 'rubro'] },
+  { v: 'subfamilia', l: 'Subfamilia',         pistas: ['descripcion de sub familia', 'descripcion sub familia', 'descsubfamilia', 'subfamilia', 'sub familia'] },
+  { v: 'area',       l: 'Área',               pistas: ['descripcion de ubicacion', 'descripcion ubicacion', 'descubicacion', 'area', 'ubicacion', 'ambiente'] },
+  { v: 'sede',       l: 'Sede',               pistas: ['descripcion de centro costo', 'desccentrocosto', 'centro de costo', 'centro costo', 'sede', 'sucursal', 'local'] },
+  { v: 'estado',     l: 'Estado',             pistas: ['estado de conservacion', 'estado conservacion', 'est con', 'estcon', 'estado operacion', 'estado', 'condicion', 'situacion'] },
+  { v: 'linea',      l: 'Línea de producción', pistas: ['descripcion linea produccion', 'linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
 ];
+
+// Detección de columnas por PUNTAJE (mismo criterio que el Depurador):
+// exacto > empieza-con > contiene, con asignación global sin colisiones, para
+// que pistas genéricas ("codigo") no se roben columnas como "CODIGO DE UBICACIÓN".
+const clave = (s) => normalizar(s).replace(/[^A-Z0-9]/g, '');
+const CAMPOS_ORG = [
+  { k: 'codigo', hints: ['barra nueva', 'barnueva', 'barnue', 'codigo de barras', 'codigo de barra', 'codbar', 'barcode', 'codigo inventario', 'codigo del activo', 'codigo activo', 'codigo patrimonial', 'codigo interno', 'placa', 'etiqueta', 'correlativo', 'codigo', 'cod'] },
+  { k: 'descripcion', hints: ['descripcion de catalogo', 'descripcion catalogo', 'desccatalogo', 'descripcion del activo', 'descripcion del bien', 'descripcion', 'denominacion', 'detalle', 'bien'] },
+  ...DIMS.map((d) => ({ k: d.v, hints: d.pistas })),
+];
+function detectarColsOrg(headers) {
+  const H = headers.map((h) => ({ raw: h, key: clave(h) }));
+  const cands = [];
+  CAMPOS_ORG.forEach((c) => {
+    c.hints.forEach((hint, hi) => {
+      const hk = clave(hint); if (!hk) return;
+      H.forEach((h) => {
+        if (!h.key) return;
+        let s = 0;
+        if (h.key === hk) s = 1000 - hi;
+        else if (h.key.startsWith(hk)) s = 650 - hi - (h.key.length - hk.length);
+        else if (hk.startsWith(h.key)) s = 480 - hi - (hk.length - h.key.length);
+        else if (h.key.includes(hk)) s = 300 - hi - (h.key.length - hk.length);
+        if (s > 0) cands.push({ k: c.k, header: h.raw, score: s });
+      });
+    });
+  });
+  cands.sort((a, b) => b.score - a.score);
+  const cols = {}; const uH = new Set(); const uK = new Set();
+  cands.forEach((x) => { if (uK.has(x.k) || uH.has(x.header)) return; cols[x.k] = x.header; uK.add(x.k); uH.add(x.header); });
+  return cols;
+}
 
 // ════════════════════════════════════════════════════════════
 // HUB — pantalla de inicio con las herramientas de la suite
@@ -205,14 +237,12 @@ async function cargarExcel(archivo) {
       registros.push(o);
     }
 
-    const colCodigo = adivinarColumna(enc, ['BarNue', 'Codigo Activo', 'codigo activo', 'codigo', 'cod', 'placa', 'etiqueta']);
+    const detectadas = detectarColsOrg(enc);
+    const colCodigo = detectadas.codigo || '';
     if (!colCodigo) { alert('No encontré la columna de código del activo en el Excel.'); return; }
 
-    const cols = {
-      codigo: colCodigo,
-      descripcion: adivinarColumna(enc, ['DescCatalogo', 'descripcion', 'denominacion', 'detalle', 'bien']) || null,
-    };
-    DIMS.forEach((d) => { cols[d.v] = adivinarColumna(enc, d.pistas) || null; });
+    const cols = { codigo: colCodigo, descripcion: detectadas.descripcion || null };
+    DIMS.forEach((d) => { cols[d.v] = detectadas[d.v] || null; });
 
     S.inv = { registros, nombre: archivo.name.replace(/\.[^.]+$/, ''), cols };
 
