@@ -19,9 +19,10 @@
  * ============================================================================
  */
 import {
-  celdaATexto, detectarFilaEncabezado, adivinarColumna,
-  cargarActivos, construirPlan, calcularMetricas, agruparPorFamilia, normalizar,
+  celdaATexto, cargarActivos, construirPlan, calcularMetricas, agruparPorFamilia, normalizar,
 } from './motor.js';
+import { leerTabla } from './shared/excel-io.js';
+import { detectarColumnas, puntuarHoja } from './shared/deteccion.js';
 import { soportado, pedirCarpeta, escanearFotos, ejecutarPlan, guardarEnDestino } from './archivos.js';
 import { generarExcel, generarPDF, graficoEstado, graficoCobertura } from './reportes.js';
 import { Depurador } from './depurador.js';
@@ -33,7 +34,7 @@ const num = (n) => (+n || 0).toLocaleString('es-PE');
 const pct = (n) => (+n || 0).toFixed(1) + '%';
 const esc = (t) => String(t ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const TEAL = '#0F766E', AMBAR = '#D97706', ROJO = '#B91C1C';
+const TEAL = '#0F766E';
 const PALETA = ['#0F766E', '#14B8A6', '#0D9488', '#2DD4BF', '#0891B2', '#0EA5E9',
                 '#6366F1', '#7C3AED', '#DB2777', '#F59E0B', '#DC2626', '#65A30D',
                 '#CA8A04', '#EA580C'];
@@ -57,10 +58,7 @@ const DIMS = [
   { v: 'linea',      l: 'Línea de producción', pistas: ['descripcion linea produccion', 'linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
 ];
 
-// Detección de columnas por PUNTAJE (mismo criterio que el Depurador):
-// exacto > empieza-con > contiene, con asignación global sin colisiones, para
-// que pistas genéricas ("codigo") no se roben columnas como "CODIGO DE UBICACIÓN".
-const clave = (s) => normalizar(s).replace(/[^A-Z0-9]/g, '');
+// Campos que detecta el organizador (motor de puntaje compartido: shared/deteccion.js).
 const CAMPOS_ORG = [
   { k: 'codigo', hints: ['barra nueva', 'barnueva', 'barnue', 'codigo de barras', 'codigo de barra', 'codbar', 'barcode', 'codigo inventario', 'codigo del activo', 'codigo activo', 'codigo patrimonial', 'codigo interno', 'placa', 'etiqueta', 'correlativo', 'codigo', 'cod'] },
   { k: 'descripcion', hints: ['descripcion de catalogo', 'descripcion catalogo', 'desccatalogo', 'descripcion del activo', 'descripcion del bien', 'descripcion', 'denominacion', 'detalle', 'bien'] },
@@ -70,28 +68,7 @@ const CAMPOS_ORG = [
   { k: "modelo", hints: ["modelo", "model"] },
   { k: "serie", hints: ["nro serie", "numero de serie", "nro de serie", "n serie", "serie", "serial"] },
 ];
-function detectarColsOrg(headers) {
-  const H = headers.map((h) => ({ raw: h, key: clave(h) }));
-  const cands = [];
-  CAMPOS_ORG.forEach((c) => {
-    c.hints.forEach((hint, hi) => {
-      const hk = clave(hint); if (!hk) return;
-      H.forEach((h) => {
-        if (!h.key) return;
-        let s = 0;
-        if (h.key === hk) s = 1000 - hi;
-        else if (h.key.startsWith(hk)) s = 650 - hi - (h.key.length - hk.length);
-        else if (hk.startsWith(h.key)) s = 480 - hi - (hk.length - h.key.length);
-        else if (h.key.includes(hk)) s = 300 - hi - (h.key.length - hk.length);
-        if (s > 0) cands.push({ k: c.k, header: h.raw, score: s });
-      });
-    });
-  });
-  cands.sort((a, b) => b.score - a.score);
-  const cols = {}; const uH = new Set(); const uK = new Set();
-  cands.forEach((x) => { if (uK.has(x.k) || uH.has(x.header)) return; cols[x.k] = x.header; uK.add(x.k); uH.add(x.header); });
-  return cols;
-}
+const detectarColsOrg = (headers) => detectarColumnas(headers, CAMPOS_ORG);
 
 // ════════════════════════════════════════════════════════════
 // HUB — pantalla de inicio con las herramientas de la suite
@@ -167,13 +144,18 @@ window.volverHub = volverHub;
 // ════════════════════════════════════════════════════════════
 // ARRANQUE
 // ════════════════════════════════════════════════════════════
+// requestAnimationFrame se pausa con la pestaña oculta y el PDF de reportes.js lo
+// espera: si el usuario cambia de pestaña, el proceso quedaría detenido.
+const rafNativo = window.requestAnimationFrame.bind(window);
+window.requestAnimationFrame = (cb) => (document.hidden ? setTimeout(() => cb(performance.now()), 16) : rafNativo(cb));
+
 pintarHub();
 $('hBack').onclick = volverHub;
 iniciarOrganizador();
 
 function iniciarOrganizador() {
   $('zInv').onclick = () => $('fInv').click();
-  $('fInv').onchange = (e) => cargarExcel(e.target.files[0]);
+  $('fInv').onchange = (e) => { cargarExcel(e.target.files[0]); e.target.value = ''; };
   dragDrop('zInv', (f) => cargarExcel(f));
   $('zOrigen').onclick = () => elegirCarpeta('origen');
   $('zDestino').onclick = () => elegirCarpeta('destino');
@@ -220,27 +202,7 @@ window.irA = irA;
 async function cargarExcel(archivo) {
   if (!archivo) return;
   try {
-    const buffer = await archivo.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const filas = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
-    const idx = detectarFilaEncabezado(filas);
-
-    const vistos = {};
-    const enc = (filas[idx] || []).map((c, j) => {
-      let n = celdaATexto(c) || `Col${j + 1}`;
-      if (vistos[n]) { vistos[n]++; n = `${n}(${vistos[n]})`; } else vistos[n] = 1;
-      return n;
-    });
-
-    const registros = [];
-    for (let i = idx + 1; i < filas.length; i++) {
-      const f = filas[i] || [];
-      if (!f.some((c) => celdaATexto(c) !== '')) continue;
-      const o = {}; enc.forEach((h, j) => { o[h] = f[j] ?? null; });
-      registros.push(o);
-    }
-
+    const { headers: enc, registros } = leerTabla(await archivo.arrayBuffer(), (h) => puntuarHoja(h, CAMPOS_ORG));
     const detectadas = detectarColsOrg(enc);
     const colCodigo = detectadas.codigo || '';
     if (!colCodigo) { alert('No encontré la columna de código del activo en el Excel.'); return; }
@@ -250,6 +212,7 @@ async function cargarExcel(archivo) {
     ["marca", "modelo", "serie"].forEach((k) => { cols[k] = detectadas[k] || null; });
 
     S.inv = { registros, nombre: archivo.name.replace(/\.[^.]+$/, ''), cols };
+    invalidarSimulacion();
 
     const z = $('zInv');
     z.classList.add('ok');
@@ -272,11 +235,17 @@ async function elegirCarpeta(cual) {
   try {
     const handle = await pedirCarpeta();
     S[cual] = handle;
+    invalidarSimulacion();
+    let noVacia = false;
+    if (cual === 'destino') { for await (const _ of handle.values()) { noVacia = true; break; } }
+    S.destinoNoVacio = noVacia;
     const z = $(cual === 'origen' ? 'zOrigen' : 'zDestino');
     z.classList.add('ok');
     z.querySelector('.ic').textContent = '✅';
     z.querySelector('.zt').textContent = handle.name;
-    z.querySelector('.zs').textContent = 'Seleccionada';
+    z.querySelector('.zs').textContent = noVacia
+      ? 'Atención: la carpeta no está vacía; los archivos con el mismo nombre se reemplazarán'
+      : 'Seleccionada';
     $('btn2').disabled = !(S.origen && S.destino);
   } catch (e) {
     if (e.name !== 'AbortError') alert('No se pudo abrir la carpeta: ' + e.message);
@@ -297,7 +266,7 @@ async function correr(simulacion) {
   if (!simulacion && !S.simulado) { alert('Primero corre la simulación.'); return; }
   const modo = document.querySelector('#modos .modo.sel').dataset.v;
   if (!simulacion &&
-      !confirm(`Se van a ${modo.toUpperCase()} las fotos hacia:\n${S.destino.name}\n\n¿Continuar?`)) return;
+      !confirm(`Se van a ${modo.toUpperCase()} las fotos hacia:\n${S.destino.name}${S.destinoNoVacio ? '\n\nLa carpeta destino no está vacía: los archivos con el mismo nombre se reemplazarán.' : ''}\n\n¿Continuar?`)) return;
 
   bloquear(true);
   $('progWrap').style.display = 'block';   // visible ANTES de setProg (fix barra)
@@ -422,7 +391,7 @@ function pintarDashboard(cfg, m) {
     kpi('Sin foto',         num(m.activosSinFoto), m.activosSinFoto ? 'warn' : 'ok'),
   ].join('');
 
-  S.totalCod = S.inv.registros.filter((r) => normalizar(celdaATexto(r[S.inv.cols.codigo]))).length;
+  S.totalCod = new Set(S.inv.registros.map((r) => normalizar(celdaATexto(r[S.inv.cols.codigo]))).filter(Boolean)).size;
 
   // Distribución de todas las dimensiones (vacío si no hay columna)
   S.datosDims = {};
@@ -443,9 +412,11 @@ function pintarDashboard(cfg, m) {
 function calcDim(col) {
   const mapa = new Map();
   const total = S.totalCod || 1;
+  const vistos = new Set();
   for (const reg of S.inv.registros) {
     const cod = normalizar(celdaATexto(reg[S.inv.cols.codigo]));
-    if (!cod) continue;
+    if (!cod || vistos.has(cod)) continue;
+    vistos.add(cod);
     const val = celdaATexto(reg[col]) || 'SIN DATO';
     if (!mapa.has(val)) mapa.set(val, { nombre: val, activos: 0, conFoto: 0 });
     const g = mapa.get(val);
@@ -970,6 +941,15 @@ async function catGenerar() {
     $('catGenerar').disabled = false;
     alert('Error generando el catálogo PPT:\n' + e.message);
   }
+}
+
+/** Cambiar el Excel o las carpetas invalida la simulación anterior (evita ejecutar un plan viejo). */
+function invalidarSimulacion() {
+  S.plan = null; S.simulado = false; S.blobExcel = null; S.blobPDF = null;
+  CAT.analisis = null;
+  const bf = $('barraFija'); if (bf) bf.style.display = 'none';
+  const be = $('btnEjecutar'); if (be) be.disabled = true;
+  const co = $('completado'); if (co) co.style.display = 'none';
 }
 
 // ── Utilidades ──────────────────────────────────────────────

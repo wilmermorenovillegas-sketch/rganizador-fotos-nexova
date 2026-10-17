@@ -378,15 +378,47 @@ function tarjeta(slide, x, reg, fotos, extra) {
 export async function generarCatalogoPPT(plan, cliente, onProgress, opts = {}) {
   const extras = opts.extras || new Map();
   const seleccion = opts.seleccion || (await analizarCatalogo(plan)).seleccion;
+  const { familias, total, totalFotos } = agrupar(plan);
+  if (!total) throw new Error('No hay activos con foto para el catálogo.');
+
+  // Inventarios grandes: un archivo por cada MAX activos (PptxGenJS arma todo en memoria).
+  const partes = partir(familias, opts.maxActivos || MAX_ACTIVOS_POR_ARCHIVO);
+  let hechos = 0;
+  const tick = () => { hechos++; onProgress?.(hechos, totalFotos); };
+  for (let i = 0; i < partes.length; i++) {
+    const pptx = await armarParte(partes[i], { cliente, extras, seleccion, tick, parte: i + 1, partes: partes.length });
+    const sufijo = partes.length > 1 ? `_parte${i + 1}de${partes.length}` : '';
+    await pptx.writeFile({ fileName: `Catalogo_Fotografico_${cliente}${sufijo}.pptx` });
+  }
+  return partes.length;
+}
+
+const MAX_ACTIVOS_POR_ARCHIVO = 350;
+
+/** Reparte las familias en grupos de hasta `max` activos; una familia puede continuar en la parte siguiente. */
+function partir(familias, max) {
+  const partes = [];
+  let actual = [], n = 0;
+  for (const f of familias) {
+    let desde = 0;
+    while (desde < f.activos.length) {
+      const toma = f.activos.slice(desde, desde + (max - n));
+      actual.push({ ...f, activos: toma, nFotos: toma.reduce((a, r) => a + r.items.length, 0), offset: desde, totalFam: f.activos.length, nFotosFam: f.nFotos });
+      desde += toma.length; n += toma.length;
+      if (n >= max) { partes.push(actual); actual = []; n = 0; }
+    }
+  }
+  if (actual.length) partes.push(actual);
+  return partes;
+}
+
+async function armarParte(familias, { cliente, extras, seleccion, tick, parte, partes }) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';
   pptx.author = 'Aquarius Consulting';
   pptx.title = `Catálogo fotográfico — ${cliente}`;
-
-  const { familias, total, totalFotos } = agrupar(plan);
-  if (!total) throw new Error('No hay activos con foto para el catálogo.');
-  let hechos = 0;
-  const tick = () => { hechos++; onProgress?.(hechos, totalFotos); };
+  const total = familias.reduce((a, f) => a + f.activos.length, 0);
+  const totalFotos = familias.reduce((a, f) => a + f.nFotos, 0);
   // Caché: portada y separadores "miran" fotos ya procesadas; la tarjeta las consume y libera.
   const cache = new Map();
   const ver = async (reg) => {
@@ -414,7 +446,8 @@ export async function generarCatalogoPPT(plan, cliente, onProgress, opts = {}) {
   cover.addText('CATÁLOGO', { x: 0.7, y: 2.35, w: 6.4, h: 0.9, fontSize: 48, bold: true, color: C.blanco, fontFace: FONT, charSpacing: 2 });
   cover.addText('FOTOGRÁFICO', { x: 0.7, y: 3.1, w: 6.4, h: 0.9, fontSize: 48, bold: true, italic: true, color: '7FB3E8', fontFace: FONT, charSpacing: 2 });
   cover.addShape('rect', { x: 0.72, y: 4.12, w: 1.1, h: 0.06, fill: { color: C.accent } });
-  cover.addText('INVENTARIO DE ACTIVOS FIJOS', { x: 0.7, y: 4.3, w: 6.4, h: 0.4, fontSize: 14, color: C.cielo, fontFace: FONT, charSpacing: 3 });
+  cover.addText(partes > 1 ? `INVENTARIO DE ACTIVOS FIJOS   ·   PARTE ${parte} DE ${partes}` : 'INVENTARIO DE ACTIVOS FIJOS',
+    { x: 0.7, y: 4.3, w: 6.4, h: 0.4, fontSize: 14, color: C.cielo, fontFace: FONT, charSpacing: 3 });
   cover.addText(corto(cliente, 60).toUpperCase(), { x: 0.7, y: 4.85, w: 6.4, h: 0.5, fontSize: 15, bold: true, color: C.blanco, fontFace: FONT });
   const stats = [[total, 'ACTIVOS'], [totalFotos, 'FOTOGRAFÍAS'], [familias.length, 'FAMILIAS']];
   stats.forEach(([v, l], i) => {
@@ -425,7 +458,7 @@ export async function generarCatalogoPPT(plan, cliente, onProgress, opts = {}) {
 
   // ── Contenido ──
   const idx = pptx.addSlide(); nSlide++;
-  encabezado(idx, 'Contenido', `${familias.length} familias`, cliente);
+  encabezado(idx, 'Contenido', `${familias.length} familias${partes > 1 ? ` · parte ${parte} de ${partes}` : ''}`, cliente);
   idx.addTable([
     [{ text: 'N°', options: { bold: true, color: C.blanco, fill: { color: C.navy } } },
      { text: 'FAMILIA', options: { bold: true, color: C.blanco, fill: { color: C.navy } } },
@@ -446,10 +479,10 @@ export async function generarCatalogoPPT(plan, cliente, onProgress, opts = {}) {
     sep.background = { color: C.blanco };
     sep.addShape('rect', { x: 0, y: 0, w: 5.6, h: H, fill: { color: C.navy } });
     sep.addShape('rect', { x: 5.6, y: 0, w: 0.12, h: H, fill: { color: C.accent } });
-    sep.addText('FAMILIA', { x: 0.7, y: 2.4, w: 4.6, h: 0.4, fontSize: 12, color: C.cielo, fontFace: FONT, charSpacing: 4 });
+    sep.addText(f.offset ? 'FAMILIA · CONTINUACIÓN' : 'FAMILIA', { x: 0.7, y: 2.4, w: 4.6, h: 0.4, fontSize: 12, color: C.cielo, fontFace: FONT, charSpacing: 4 });
     sep.addText(f.familia.toUpperCase(), { x: 0.7, y: 2.85, w: 4.7, h: 1.9, fontSize: 32, bold: true, color: C.blanco, fontFace: FONT, valign: 'top' });
     sep.addShape('rect', { x: 0.72, y: 4.85, w: 0.9, h: 0.06, fill: { color: C.accent } });
-    const cifras = [[f.activos.length, 'ACTIVOS'], [f.nFotos, 'FOTOGRAFÍAS'], ...(f.conSub ? [[f.nSubs, 'SUBFAMILIAS']] : [])];
+    const cifras = [[f.totalFam, 'ACTIVOS'], [f.nFotosFam, 'FOTOGRAFÍAS'], ...(f.conSub ? [[f.nSubs, 'SUBFAMILIAS']] : [])];
     cifras.forEach(([v, l], i) => {
       sep.addText(Number(v).toLocaleString('es-PE'), { x: 6.3 + i * 2.25, y: 0.55, w: 2.15, h: 0.85, fontSize: 40, bold: true, color: C.navy, fontFace: FONT });
       sep.addText(l, { x: 6.33 + i * 2.25, y: 1.38, w: 2.15, h: 0.3, fontSize: 9.5, color: C.gris, fontFace: FONT, charSpacing: 2 });
@@ -464,11 +497,11 @@ export async function generarCatalogoPPT(plan, cliente, onProgress, opts = {}) {
     }
     pie(sep, nSlide, true);
 
-    // Láminas: 2 activos por lámina
+    // Láminas: 2 activos por lámina (la numeración respeta el total de la familia)
     for (let p = 0; p < f.activos.length; p += 2) {
       const par = f.activos.slice(p, p + 2);
       const slide = pptx.addSlide(); nSlide++;
-      encabezado(slide, f.familia, `${Math.min(p + 2, f.activos.length)} de ${f.activos.length}`, cliente);
+      encabezado(slide, f.familia, `${f.offset + Math.min(p + 2, f.activos.length)} de ${f.totalFam}`, cliente);
       for (let i = 0; i < par.length; i++) {
         const fotos = await fotosDe(par[i]);
         // Si queda un solo activo, se centra
@@ -478,6 +511,5 @@ export async function generarCatalogoPPT(plan, cliente, onProgress, opts = {}) {
       pie(slide, nSlide);
     }
   }
-
-  await pptx.writeFile({ fileName: `Catalogo_Fotografico_${cliente}.pptx` });
+  return pptx;
 }

@@ -15,13 +15,15 @@
  * · Reutiliza los helpers ya probados de motor.js (no se modifica motor.js).
  * ============================================================================
  */
-import { celdaATexto, normalizar, detectarFilaEncabezado, adivinarColumna } from './motor.js';
+import { celdaATexto, normalizar, adivinarColumna } from './motor.js';
 import { LOGO_AQUARIUS } from './logo-aquarius.js';
+import { leerTabla } from './shared/excel-io.js';
+import { detectarColumnas as detectarCols, puntuarHoja } from './shared/deteccion.js';
 
 const $ = (id) => document.getElementById(id);
 const num = (n) => (+n || 0).toLocaleString('es-PE');
 const pct1 = (n) => (+n || 0).toFixed(1) + '%';
-const esc = (t) => String(t ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+const esc = (t) => String(t ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Paletas globales seleccionables por el usuario (pocas, para no saturar).
 const PALETAS = {
@@ -36,26 +38,26 @@ const paleta = () => PALETAS[paletaActual].colores;
 const GRIS = '#CBD5E1';
 
 /** Campos canónicos y sus pistas de detección (genéricos, multi-base). */
-const CAMPOS = [
+export const CAMPOS = [
   { k: 'codigo',       l: 'Código (barra nueva)', key: true, hints: ['barnueva', 'barra nueva', 'codigo de barras', 'codigo de barra', 'codbar', 'cod barra', 'codigo barra', 'barcode', 'barnue', 'codigo inventario', 'codigo del activo', 'codigo activo', 'codigo del bien', 'codigo bien', 'codigo patrimonial', 'codigo interno', 'placa', 'etiqueta', 'correlativo', 'id activo', 'codigo', 'cod'] },
   { k: 'bar_antigua',  l: 'Barra antigua',   hints: ['barantigua', 'barra antigua', 'codigo antiguo', 'cod antiguo', 'barra anterior', 'codigo anterior', 'codigo antiguo de barra'] },
   { k: 'bar_padre',    l: 'Barra padre',     hints: ['barpadre', 'barra padre', 'codigo padre', 'cod padre', 'barra del padre', 'codigo de barra padre'] },
   { k: 'descripcion',  l: 'Descripción',     hints: ['descripcion del activo', 'descripcion del bien', 'descripcion catalogo', 'desccatalogo', 'descripcion bien', 'denominacion', 'descripcion', 'nombre del activo', 'articulo'] },
   { k: 'sede',         l: 'Sede',            hints: ['sede', 'sucursal', 'local', 'establecimiento'] },
   { k: 'area',         l: 'Área',            hints: ['area', 'área'] },
-  { k: 'cod_ubic',     l: 'Cód. Ubicación',  hints: ['codigo ubicacion', 'cod ubicacion', 'codubicacion'] },
-  { k: 'ubicacion',    l: 'Ubicación',       hints: ['descripcion ubicacion', 'desc ubicacion', 'descubicacion', 'ubicacion', 'ambiente'] },
-  { k: 'cod_centro',   l: 'Cód. Centro Costo', hints: ['codigo centro costo', 'codigo ccosto', 'cod centro costo', 'cod ccosto', 'codccosto', 'codcentrocosto'] },
-  { k: 'centro',       l: 'Centro de costo', hints: ['descripcion centro costo', 'descripcion ccosto', 'desc centro costo', 'desccentrocosto', 'descccosto', 'centro de costo', 'centro costo', 'ccosto', 'cco'] },
-  { k: 'cod_resp',     l: 'Cód. Responsable', hints: ['codigo responsable', 'cod responsable', 'codresponsable'] },
-  { k: 'responsable',  l: 'Responsable',     hints: ['descripcion responsable', 'desc responsable', 'descresponsable', 'responsable', 'custodio', 'usuario asignado', 'asignado'] },
-  { k: 'cod_familia',  l: 'Cód. Familia',    hints: ['codigo familia', 'cod familia', 'codfamilia'] },
+  { k: 'cod_ubic',     l: 'Cód. Ubicación',  hints: ['codigo de ubicacion', 'codigo ubicacion', 'cod ubicacion', 'codubicacion'] },
+  { k: 'ubicacion',    l: 'Ubicación',       hints: ['descripcion de ubicacion', 'descripcion ubicacion', 'desc ubicacion', 'descubicacion', 'ubicacion', 'ambiente'] },
+  { k: 'cod_centro',   l: 'Cód. Centro Costo', hints: ['codigo de centro de costo', 'codigo de centro costo', 'codigo centro costo', 'codigo ccosto', 'cod centro costo', 'cod ccosto', 'codccosto', 'codcentrocosto'] },
+  { k: 'centro',       l: 'Centro de costo', hints: ['descripcion de centro de costo', 'descripcion de centro costo', 'descripcion centro costo', 'descripcion ccosto', 'desc centro costo', 'desccentrocosto', 'descccosto', 'centro de costo', 'centro costo', 'ccosto', 'cco'] },
+  { k: 'cod_resp',     l: 'Cód. Responsable', hints: ['codigo de responsable', 'codigo responsable', 'cod responsable', 'codresponsable'] },
+  { k: 'responsable',  l: 'Responsable',     hints: ['nombre del responsable', 'nombre responsable', 'descripcion de responsable', 'descripcion responsable', 'desc responsable', 'descresponsable', 'responsable', 'custodio', 'usuario asignado', 'asignado'] },
+  { k: 'cod_familia',  l: 'Cód. Familia',    hints: ['codigo de familia', 'codigo familia', 'cod familia', 'codfamilia'] },
   { k: 'familia',      l: 'Familia',         hints: ['descripcion familia', 'descripcion de familia', 'desc familia', 'descfamilia', 'familia', 'grupo', 'rubro', 'clase', 'categoria'] },
-  { k: 'cod_subfam',   l: 'Cód. Subfamilia', hints: ['codigo subfamilia', 'codigo sub familia', 'cod subfamilia', 'codsubfamilia'] },
+  { k: 'cod_subfam',   l: 'Cód. Subfamilia', hints: ['codigo de sub familia', 'codigo de subfamilia', 'codigo subfamilia', 'codigo sub familia', 'cod subfamilia', 'codsubfamilia'] },
   { k: 'subfamilia',   l: 'Subfamilia (tipo)', hints: ['descripcion subfamilia', 'descripcion sub familia', 'desc subfamilia', 'descsubfamilia', 'subfamilia', 'sub familia', 'subgrupo', 'sub grupo', 'subclase', 'sub clase', 'subcategoria', 'sub categoria', 'tipo de activo', 'tipo activo', 'tipo de bien', 'tipo bien', 'tipo'] },
-  { k: 'cod_catalogo', l: 'Cód. Catálogo',   hints: ['codigo catalogo', 'codigo de catalogo', 'cod catalogo', 'codcatalogo'] },
-  { k: 'cod_linea',    l: 'Cód. Línea',      hints: ['codigo linea produccion', 'cod linea produccion', 'codigo linea', 'cod linea', 'codlineaproduccion'] },
-  { k: 'linea',        l: 'Línea',           hints: ['descripcion linea produccion', 'desc linea produccion', 'descripcion linea', 'linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
+  { k: 'cod_catalogo', l: 'Cód. Catálogo',   hints: ['codigo de catalogo', 'codigo catalogo', 'cod catalogo', 'codcatalogo'] },
+  { k: 'cod_linea',    l: 'Cód. Línea',      hints: ['codigo de linea de produccion', 'codigo linea produccion', 'cod linea produccion', 'codigo de linea', 'codigo linea', 'cod linea', 'codlineaproduccion'] },
+  { k: 'linea',        l: 'Línea',           hints: ['descripcion de linea de produccion', 'descripcion linea produccion', 'desc linea produccion', 'descripcion linea', 'linea de produccion', 'linea produccion', 'linea', 'proceso', 'planta'] },
   { k: 'marca',        l: 'Marca',           hints: ['marca', 'fabricante', 'brand'] },
   { k: 'modelo',       l: 'Modelo',          hints: ['modelo', 'model'] },
   { k: 'serie',        l: 'Nro. Serie',      hints: ['nro serie', 'numero de serie', 'nro de serie', 'n serie', 'serie', 'serial'] },
@@ -120,6 +122,12 @@ function filasFiltradas(exceptK) {
   if (!act.length) return D.clean;
   return D.clean.filter((r) => act.every(([k, v]) => String(r[k] ?? '').trim() === v));
 }
+/** Texto del filtro activo para rotular los exportes ("" si no hay filtro). */
+function textoFiltros() {
+  const ks = Object.keys(filtros);
+  if (!ks.length) return '';
+  return 'Filtro aplicado: ' + ks.map((k) => `${CAMPOS.find((c) => c.k === k).l} = ${filtros[k]}`).join(' · ');
+}
 /** Aplica/quita un filtro por categoría y re-renderiza el dashboard. */
 function aplicarFiltro(k, val) {
   if (!val || val === 'Sin dato' || /^Otros \(/.test(val)) return;
@@ -134,7 +142,7 @@ function init() {
   if (inicializado) return;
   inicializado = true;
   $('depZona').onclick = () => $('depFile').click();
-  $('depFile').onchange = (e) => leerBase(e.target.files[0]);
+  $('depFile').onchange = (e) => { leerBase(e.target.files[0]); e.target.value = ''; };
   dragDrop('depZona', (f) => leerBase(f));
   $('depProcesar').onclick = procesar;
   $('depReset').onclick = reset;
@@ -166,66 +174,17 @@ function reset() {
   z.querySelector('.zs').textContent = '.xlsx · .xlsm · .xls · .csv';
 }
 
-// Compara ignorando acentos, espacios y símbolos ("Cod. Ubicación" → "CODUBICACION").
-const clave = (s) => normalizar(s).replace(/[^A-Z0-9]/g, '');
-
-/**
- * Detección por puntaje: exacto (1000) > empieza-con (650) > contenido (300),
- * con desempate por orden de la pista. Luego asignación global greedy: cada
- * columna se usa una sola vez, así "codigo" no se roba "CodigoUbicacion".
- */
-function detectarColumnas(headers) {
-  const H = headers.map((h) => ({ raw: h, key: clave(h) }));
-  const cands = [];
-  CAMPOS.forEach((campo) => {
-    campo.hints.forEach((hint, hi) => {
-      const hk = clave(hint);
-      if (!hk) return;
-      H.forEach((h) => {
-        if (!h.key) return;
-        let score = 0;
-        if (h.key === hk) score = 1000 - hi;
-        else if (h.key.startsWith(hk)) score = 650 - hi - (h.key.length - hk.length);
-        else if (hk.startsWith(h.key)) score = 480 - hi - (hk.length - h.key.length);
-        else if (h.key.includes(hk)) score = 300 - hi - (h.key.length - hk.length);
-        if (score > 0) cands.push({ k: campo.k, header: h.raw, score });
-      });
-    });
-  });
-  cands.sort((a, b) => b.score - a.score);
-  const cols = {}; const usadaH = new Set(); const usadaK = new Set();
-  cands.forEach((c) => {
-    if (usadaK.has(c.k) || usadaH.has(c.header)) return;
-    cols[c.k] = c.header; usadaK.add(c.k); usadaH.add(c.header);
-  });
-  CAMPOS.forEach((c) => { if (!(c.k in cols)) cols[c.k] = ''; });
-  return cols;
-}
+// Detección por puntaje con asignación global (motor compartido: shared/deteccion.js).
+const detectarColumnas = (headers) => detectarCols(headers, CAMPOS);
 
 // ── 1) Leer base y detectar columnas ────────────────────────
 async function leerBase(archivo) {
   if (!archivo) return;
   try {
-    const buffer = await archivo.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const filas = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
-    if (!filas.length) { alert('El archivo no tiene datos.'); return; }
-
-    const idx = detectarFilaEncabezado(filas);
-    const vistos = {};
-    D.headers = (filas[idx] || []).map((c, j) => {
-      let n = celdaATexto(c) || `Col${j + 1}`;
-      if (vistos[n]) { vistos[n]++; n = `${n}(${vistos[n]})`; } else vistos[n] = 1;
-      return n;
-    });
-    D.raw = [];
-    for (let i = idx + 1; i < filas.length; i++) {
-      const f = filas[i] || [];
-      if (!f.some((c) => celdaATexto(c) !== '')) continue;
-      const o = {}; D.headers.forEach((h, j) => { o[h] = f[j] ?? null; });
-      D.raw.push(o);
-    }
+    const t = leerTabla(await archivo.arrayBuffer(), (h) => puntuarHoja(h, CAMPOS));
+    if (!t.registros.length) { alert('El archivo no tiene datos.'); return; }
+    D.headers = t.headers;
+    D.raw = t.registros;
     D.nombre = archivo.name.replace(/\.[^.]+$/, '');
 
     // Detección automática por puntaje (exacto > prefijo > contiene), con
@@ -617,18 +576,11 @@ async function cargarMaestro(archivo) {
       const arr = JSON.parse(await archivo.text());
       pares = (Array.isArray(arr) ? arr : []).map((o) => ({ marca: o.marca ?? o.Marca ?? '', modelo: o.modelo ?? o.Modelo ?? '' }));
     } else {
-      const wb = XLSX.read(await archivo.arrayBuffer(), { type: 'array' });
-      const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: null, blankrows: true });
-      const idx = detectarFilaEncabezado(filas);
-      const enc = (filas[idx] || []).map((c) => celdaATexto(c));
-      const cMarca = adivinarColumna(enc, ['marca', 'fabricante', 'brand']);
-      const cModelo = adivinarColumna(enc, ['modelo', 'model']);
+      const t = leerTabla(await archivo.arrayBuffer(), (h) => (adivinarColumna(h, ['marca', 'fabricante', 'brand']) ? 1 : 0));
+      const cMarca = adivinarColumna(t.headers, ['marca', 'fabricante', 'brand']);
+      const cModelo = adivinarColumna(t.headers, ['modelo', 'model']);
       if (!cMarca) { alert('El maestro necesita al menos una columna "Marca".'); return; }
-      const iM = enc.indexOf(cMarca), iMo = cModelo ? enc.indexOf(cModelo) : -1;
-      for (let i = idx + 1; i < filas.length; i++) {
-        const f = filas[i] || [];
-        pares.push({ marca: celdaATexto(f[iM]), modelo: iMo >= 0 ? celdaATexto(f[iMo]) : '' });
-      }
+      for (const r of t.registros) pares.push({ marca: celdaATexto(r[cMarca]), modelo: cModelo ? celdaATexto(r[cModelo]) : '' });
     }
     const mapa = new Map();
     for (const p of pares) {
@@ -1027,7 +979,7 @@ async function exportarExcelDashboard() {
   t.font = { bold: true, size: 14, color: { argb: 'FF1E293B' } };
   ws.mergeCells(2, 1, 2, 4);
   const st = ws.getCell(2, 1);
-  st.value = `${num(D.M.total)} activos · ${dims.length} dimensiones · ${new Date().toLocaleString('es-PE')}`;
+  st.value = `${num(filasFiltradas(null).length)} activos · ${dims.length} dimensiones · ${new Date().toLocaleString('es-PE')}${textoFiltros() ? '  ·  ' + textoFiltros() : ''}`;
   st.font = { size: 10, color: { argb: 'FF64748B' } };
   let row = 4;
   try {
@@ -1094,7 +1046,8 @@ async function exportarWordDashboard() {
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Dashboard de activos</title></head>
     <body style="font-family:Calibri,sans-serif">
       <h1 style="color:#1E293B;margin-bottom:2px">Dashboard de activos</h1>
-      <p style="color:#64748B;margin-top:0">${esc(D.nombre)} · ${new Date().toLocaleDateString('es-PE')} · ${num(D.M.total)} activos · depurado con NEXOVA Suite</p>
+      <p style="color:#64748B;margin-top:0">${esc(D.nombre)} · ${new Date().toLocaleDateString('es-PE')} · ${num(filasFiltradas(null).length)} activos · depurado con NEXOVA Suite</p>
+      ${textoFiltros() ? `<p style="color:#92400E;background:#FEF3C7;padding:6px 10px"><b>${esc(textoFiltros())}</b></p>` : ''}
       <hr/>
       ${secciones}
     </body></html>`;
@@ -1113,6 +1066,7 @@ async function exportarPDF() {
   doc.text('DEPURACIÓN Y CALIDAD DE DATOS', M, 15);
   doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(203, 213, 225);
   doc.text(`${D.nombre}  ·  ${new Date().toLocaleDateString('es-PE')}`, M, 22);
+  if (textoFiltros()) { doc.setFontSize(8).setTextColor(253, 230, 138); doc.text(textoFiltros() + ' (aplica a los gráficos por dimensión)', M, 27); }
 
   let y = 40;
   const kpis = [['Registros', num(m.total)], ['Completitud', `${m.complGlobal.toFixed(1)}%`], ['Cód. duplicados', num(m.dupCodigo.n)], ['Sin marca/modelo', num(D.alertas.length)]];
