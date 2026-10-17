@@ -25,13 +25,13 @@ import {
 import { soportado, pedirCarpeta, escanearFotos, ejecutarPlan, guardarEnDestino } from './archivos.js';
 import { generarExcel, generarPDF, graficoEstado, graficoCobertura } from './reportes.js';
 import { Depurador } from './depurador.js';
-import { generarCatalogoPPT } from './catalogo.js';
+import { generarCatalogoPPT, analizarCatalogo } from './catalogo.js';
 
 // ── Helpers cortos ──────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 const num = (n) => (+n || 0).toLocaleString('es-PE');
 const pct = (n) => (+n || 0).toFixed(1) + '%';
-const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+const esc = (t) => String(t ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const TEAL = '#0F766E', AMBAR = '#D97706', ROJO = '#B91C1C';
 const PALETA = ['#0F766E', '#14B8A6', '#0D9488', '#2DD4BF', '#0891B2', '#0EA5E9',
@@ -65,6 +65,10 @@ const CAMPOS_ORG = [
   { k: 'codigo', hints: ['barra nueva', 'barnueva', 'barnue', 'codigo de barras', 'codigo de barra', 'codbar', 'barcode', 'codigo inventario', 'codigo del activo', 'codigo activo', 'codigo patrimonial', 'codigo interno', 'placa', 'etiqueta', 'correlativo', 'codigo', 'cod'] },
   { k: 'descripcion', hints: ['descripcion de catalogo', 'descripcion catalogo', 'desccatalogo', 'descripcion del activo', 'descripcion del bien', 'descripcion', 'denominacion', 'detalle', 'bien'] },
   ...DIMS.map((d) => ({ k: d.v, hints: d.pistas })),
+  // Solo para las especificaciones del catálogo PPT
+  { k: "marca", hints: ["marca", "fabricante", "brand"] },
+  { k: "modelo", hints: ["modelo", "model"] },
+  { k: "serie", hints: ["nro serie", "numero de serie", "nro de serie", "n serie", "serie", "serial"] },
 ];
 function detectarColsOrg(headers) {
   const H = headers.map((h) => ({ raw: h, key: clave(h) }));
@@ -243,6 +247,7 @@ async function cargarExcel(archivo) {
 
     const cols = { codigo: colCodigo, descripcion: detectadas.descripcion || null };
     DIMS.forEach((d) => { cols[d.v] = detectadas[d.v] || null; });
+    ["marca", "modelo", "serie"].forEach((k) => { cols[k] = detectadas[k] || null; });
 
     S.inv = { registros, nombre: archivo.name.replace(/\.[^.]+$/, ''), cols };
 
@@ -834,24 +839,136 @@ function cardsPDF(doc, y, datos, M, W) {
 }
 
 // ── Catálogo fotográfico (PPT) ──────────────────────────────
+// Flujo: analizar fotos → revisar la foto principal (solo dudosos) → generar PPT.
+const CAT = { analisis: null, filtro: 'revisar', limite: 60, manual: new Set(), ocupado: false };
+const ETIQ_CERTEZA = { codigo: 'Código de barras', imagen: 'Probable', revisar: 'Revisar', manual: 'Elegida por usted' };
+const ETIQ_TIPO = { etiqueta: 'Etiqueta', datos: 'Placa de datos', 'probable-etiqueta': 'Etiqueta?' };
+
+function catModal(abrir) {
+  $('catModal').hidden = !abrir;
+  document.body.style.overflow = abrir ? 'hidden' : '';
+}
+function catProgreso(txt, h, t) {
+  $('catProg').hidden = false;
+  $('catProgFill').style.width = `${t ? Math.round((h / t) * 100) : 0}%`;
+  $('catProgTxt').textContent = t ? `${txt} · ${num(h)} de ${num(t)} fotos` : txt;
+}
+
 async function catalogoPPT() {
-  if (!S.plan) { alert('Primero corre la simulación.'); return; }
-  const m = calcularMetricas(S.plan);
-  if (!m.emparejadas) { alert('No hay fotos emparejadas para el catálogo.'); return; }
-  const btn = $('btnCatalogoPpt');
-  const orig = btn.textContent;
-  btn.disabled = true;
+  if (!S.plan) { alert('Primero corra la simulación.'); return; }
+  if (!calcularMetricas(S.plan).emparejadas) { alert('No hay fotos emparejadas para el catálogo.'); return; }
+  if (CAT.ocupado) return;
+  // Enlaces del modal (una sola vez)
+  if (!catModal.listo) {
+    catModal.listo = true;
+    const cerrar = () => { if (!CAT.ocupado) catModal(false); };
+    $('catCerrar').onclick = cerrar;
+    $('catCancelar').onclick = cerrar;
+    $('catModal').addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrar(); });
+    $('catFiltros').onclick = (e) => {
+      const b = e.target.closest('.cat-fil'); if (!b) return;
+      CAT.filtro = b.dataset.f; CAT.limite = 60; catPintar();
+    };
+    $('catGrid').onclick = (e) => {
+      const b = e.target.closest('.cat-foto');
+      if (b) {
+        const sel = CAT.analisis.seleccion.get(b.dataset.cod);
+        sel.principal = +b.dataset.i; CAT.manual.add(b.dataset.cod);
+        const card = b.closest('.cat-card'); card.outerHTML = catTarjeta(b.dataset.cod);
+        return;
+      }
+      if (e.target.closest('.cat-mas')) { CAT.limite += 60; catPintar(); }
+    };
+    $('catGenerar').onclick = catGenerar;
+  }
+  CAT.analisis = null; CAT.manual = new Set(); CAT.filtro = 'revisar'; CAT.limite = 60;
+  $('catSub').textContent = 'Analizando las fotografías: se lee el código de barras de cada etiqueta para identificar la toma del bien.';
+  $('catResumen').hidden = true; $('catFiltros').hidden = true; $('catGrid').innerHTML = '';
+  $('catGenerar').disabled = true;
+  catModal(true);
+  CAT.ocupado = true;
   try {
-    await generarCatalogoPPT(S.plan, S.inv.nombre, (hechos, total) => {
-      btn.textContent = `Generando… ${num(hechos)}/${num(total)}`;
-    });
-    btn.textContent = '✓ Catálogo listo';
-    setTimeout(() => { btn.textContent = orig; }, 2500);
+    CAT.analisis = await analizarCatalogo(S.plan, (h, t) => catProgreso('Analizando', h, t));
   } catch (e) {
+    CAT.ocupado = false; catModal(false);
+    alert('No se pudo analizar las fotos:\n' + e.message); return;
+  }
+  CAT.ocupado = false;
+  $('catProg').hidden = true;
+  const sel = [...CAT.analisis.seleccion.values()];
+  const n = (c) => sel.filter((x) => x.certeza === c).length;
+  const nRev = n('imagen') + n('revisar');
+  $('catSub').textContent = nRev
+    ? `Revise los ${num(nRev)} activos marcados. Los confirmados por código de barras ya están listos.`
+    : 'Todas las fotos principales se identificaron por código de barras. Puede generar el catálogo.';
+  $('catResumen').innerHTML = `
+    <span class="cat-chip ok"><b>${num(n('codigo'))}</b> confirmados por código de barras</span>
+    <span class="cat-chip med"><b>${num(n('imagen'))}</b> probables</span>
+    <span class="cat-chip rev"><b>${num(n('revisar'))}</b> por revisar</span>`;
+  $('catResumen').hidden = false; $('catFiltros').hidden = false;
+  if (!nRev) CAT.filtro = 'todos';
+  $('catGenerar').disabled = false;
+  catPintar();
+}
+
+/** Lista de activos según el filtro (dudosos primero). */
+function catLista() {
+  const orden = { revisar: 0, imagen: 1, codigo: 2 };
+  const regs = CAT.analisis.familias.flatMap((f) => f.activos);
+  const lista = CAT.filtro === 'todos' ? regs
+    : regs.filter((r) => CAT.analisis.seleccion.get(r.activo.codigo).certeza !== 'codigo');
+  return lista.slice().sort((a, b) =>
+    orden[CAT.analisis.seleccion.get(a.activo.codigo).certeza] - orden[CAT.analisis.seleccion.get(b.activo.codigo).certeza]);
+}
+
+function catTarjeta(cod) {
+  const reg = CAT.analisis.familias.flatMap((f) => f.activos).find((r) => r.activo.codigo === cod);
+  const sel = CAT.analisis.seleccion.get(cod);
+  const manual = CAT.manual.has(cod);
+  const cert = manual ? 'manual' : sel.certeza;
+  const fotos = sel.thumbs.map((src, i) => {
+    const es = i === sel.principal, tipo = ETIQ_TIPO[sel.tipos[i]];
+    return `<button class="cat-foto${es ? ' sel' : ''}" data-cod="${esc(cod)}" data-i="${i}" aria-pressed="${es}" title="Usar como foto principal">
+      ${src ? `<img src="${src}" alt="Foto ${i + 1} de ${esc(cod)}" loading="lazy">` : '<span class="tag">Sin vista</span>'}
+      ${es ? '<span class="tag tag-p">Principal</span>' : tipo ? `<span class="tag">${tipo}</span>` : ''}
+    </button>`;
+  }).join('');
+  return `<div class="cat-card${manual ? ' hecho' : ''}">
+    <div class="cat-card-top"><span class="cat-cod">${esc(cod)}</span><span class="cat-badge ${cert}">${ETIQ_CERTEZA[cert]}</span></div>
+    <div class="cat-desc" title="${esc(reg.activo.descripcion || '')}">${esc(reg.activo.descripcion || 'Sin descripción')}</div>
+    <div class="cat-fotos">${fotos}</div>
+  </div>`;
+}
+
+function catPintar() {
+  document.querySelectorAll('#catFiltros .cat-fil').forEach((b) => b.classList.toggle('activo', b.dataset.f === CAT.filtro));
+  const lista = catLista();
+  const vis = lista.slice(0, CAT.limite);
+  $('catGrid').innerHTML = (vis.length ? vis.map((r) => catTarjeta(r.activo.codigo)).join('')
+    : '<div class="cat-vacio">No hay activos por revisar. Puede generar el catálogo.</div>')
+    + (lista.length > vis.length ? `<button class="b-sec cat-mas">Mostrar ${num(Math.min(60, lista.length - vis.length))} más (${num(lista.length - vis.length)} restantes)</button>` : '');
+}
+
+async function catGenerar() {
+  if (!CAT.analisis || CAT.ocupado) return;
+  CAT.ocupado = true;
+  $('catGenerar').disabled = true;
+  try {
+    const cl = S.inv.cols;
+    const val = (r, k) => (cl[k] ? celdaATexto(r[cl[k]]) : '');
+    const extras = new Map();
+    for (const r of S.inv.registros) {
+      const cod = celdaATexto(r[cl.codigo]);
+      if (cod && !extras.has(cod)) extras.set(cod, { marca: val(r, 'marca'), modelo: val(r, 'modelo'), serie: val(r, 'serie'), estado: val(r, 'estado'), ubicacion: val(r, 'area') || val(r, 'sede') });
+    }
+    await generarCatalogoPPT(S.plan, S.inv.nombre, (h, t) => catProgreso('Armando el PowerPoint', h, t),
+      { extras, seleccion: CAT.analisis.seleccion });
+    $('catProgTxt').textContent = 'Catálogo generado y descargado.';
+    setTimeout(() => { CAT.ocupado = false; catModal(false); }, 900);
+  } catch (e) {
+    CAT.ocupado = false;
+    $('catGenerar').disabled = false;
     alert('Error generando el catálogo PPT:\n' + e.message);
-    btn.textContent = orig;
-  } finally {
-    btn.disabled = false;
   }
 }
 

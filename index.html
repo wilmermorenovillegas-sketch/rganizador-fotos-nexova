@@ -18,7 +18,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--fondo);color:va
 /* ══ HEADER ══ */
 header{background:var(--slate);border-bottom:3px solid var(--teal);padding:0 24px;position:sticky;top:0;z-index:40}
 .hbar{max-width:1440px;margin:0 auto;height:58px;display:flex;align-items:center;gap:12px}
-.hbar img{height:30px;object-fit:contain}
+.hbar .logo{height:36px;width:auto;display:block;flex-shrink:0}
 .h-back{background:transparent;border:1px solid #334155;color:#CBD5E1;font-family:'Sora',sans-serif;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer;display:none;align-items:center;gap:6px}
 .h-back:hover{border-color:var(--teal-h);color:#fff}
 .h-tool{font-size:12.5px;color:#0D9488;letter-spacing:.04em;border-left:1px solid #334155;padding-left:12px;font-weight:600;display:none}
@@ -309,15 +309,70 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
 .rk-more{font-size:11px;color:var(--gris);padding-left:31px;margin-top:2px}
 @media(max-width:1000px){.cuadros-wrap{grid-template-columns:1fr}}
 @media(max-width:760px){.cuadro-graf{width:240px;height:240px;margin:0 auto}.cuadro-body-hero{grid-template-columns:1fr}}
+/* ══ REVISIÓN DEL CATÁLOGO (modal) ══ */
+.cat-modal{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px}
+.cat-modal[hidden]{display:none}
+.cat-dialog{background:#fff;border-radius:22px;width:min(1180px,100%);height:min(92vh,980px);display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(30,41,59,.25);overflow:hidden}
+.cat-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 26px 12px}
+.cat-eyebrow{font-family:'Sora',sans-serif;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin-bottom:6px}
+.cat-head h2{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;color:var(--slate);letter-spacing:-.01em}
+.cat-sub{font-size:13.5px;color:#64748B;margin-top:4px}
+.cat-x{background:transparent;border:1px solid var(--gris-200);color:#64748B;width:38px;height:38px;border-radius:10px;font-size:20px;padding:0;line-height:1}
+.cat-x:hover{border-color:var(--teal);color:var(--teal)}
+.cat-prog{padding:4px 26px 16px}
+.cat-prog-txt{font-size:12.5px;color:#64748B;margin-top:6px;font-variant-numeric:tabular-nums}
+.cat-resumen{display:flex;gap:10px;flex-wrap:wrap;padding:0 26px 12px}
+.cat-chip{display:flex;align-items:center;gap:8px;border-radius:100px;padding:7px 14px;font-size:12.5px;font-weight:600}
+.cat-chip b{font-family:'Sora',sans-serif;font-size:14px}
+.cat-chip.ok{background:#F0FDFA;color:#115E59}.cat-chip.med{background:#FEF9C3;color:#854D0E}.cat-chip.rev{background:#FEF3C7;color:#92400E}
+.cat-filtros{display:flex;gap:6px;padding:0 26px 12px;border-bottom:1px solid var(--gris-200)}
+.cat-fil{background:var(--gris-100);color:#475569;font-size:12.5px;padding:7px 14px;border-radius:100px}
+.cat-fil.activo{background:var(--teal);color:#fff}
+.cat-grid{flex:1;overflow:auto;padding:16px 26px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-content:start;background:#F8FAFB}
+.cat-card{background:#fff;border:1px solid rgba(15,118,110,.12);border-radius:14px;padding:12px 12px 14px}
+.cat-card.hecho{border-color:var(--teal)}
+.cat-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.cat-cod{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--slate)}
+.cat-badge{font-size:10.5px;font-weight:700;border-radius:100px;padding:3px 9px;white-space:nowrap}
+.cat-badge.codigo{background:#CCFBF1;color:#115E59}.cat-badge.imagen{background:#FEF9C3;color:#854D0E}.cat-badge.revisar{background:#FEF3C7;color:#92400E}.cat-badge.manual{background:var(--teal);color:#fff}
+.cat-desc{font-size:12px;color:#64748B;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cat-foto{position:relative;padding:0;border:2px solid transparent;border-radius:10px;background:#EEF2F6;aspect-ratio:3/4;overflow:hidden;cursor:pointer}
+.cat-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.cat-foto:hover{border-color:var(--teal-h)}
+.cat-foto.sel{border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,118,110,.25)}
+.cat-foto .tag{position:absolute;left:6px;bottom:6px;margin:0;border:none;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;background:rgba(15,23,42,.72);color:#fff}
+.cat-foto.sel .tag-p{background:var(--teal)}
+.cat-foto:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(15,118,110,.45)}
+.cat-mas{grid-column:1/-1;justify-self:center}
+.cat-vacio{grid-column:1/-1;text-align:center;color:#64748B;padding:40px 10px;font-size:14px}
+.cat-foot{display:flex;align-items:center;gap:10px;padding:14px 26px;border-top:1px solid var(--gris-200);background:#fff}
+.cat-nota{font-size:12.5px;color:#64748B;margin-right:auto}
+@media(max-width:640px){.cat-modal{padding:0}.cat-dialog{height:100vh;border-radius:0}.cat-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header>
   <div class="hbar">
     <button class="h-back" id="hBack">‹ Herramientas</button>
-    <img src="assets/logo_nexova.png" alt="NEXOVA">
+    <svg class="logo" viewBox="0 0 330 80" role="img" aria-label="NEXOVA Software Empresarial">
+      <g transform="translate(0,8)">
+        <polygon points="32,2 56,16 56,48 32,62 8,48 8,16" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.55"/>
+        <circle cx="32" cy="2" r="3" fill="#FFFFFF" fill-opacity="0.9"/>
+        <circle cx="56" cy="16" r="3" fill="#2DD4BF"/>
+        <circle cx="56" cy="48" r="3" fill="#FFFFFF" fill-opacity="0.9"/>
+        <circle cx="32" cy="62" r="3" fill="#2DD4BF"/>
+        <circle cx="8" cy="48" r="3" fill="#FFFFFF" fill-opacity="0.9"/>
+        <circle cx="8" cy="16" r="3" fill="#2DD4BF"/>
+        <line x1="22" y1="48" x2="22" y2="22" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="22" y1="22" x2="42" y2="48" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="42" y1="22" x2="42" y2="48" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
+      </g>
+      <text x="86" y="46" font-family="Sora, system-ui, sans-serif" font-size="32" font-weight="800" fill="#FFFFFF" letter-spacing="5">NEXOVA</text>
+      <text x="88" y="62" font-family="Sora, system-ui, sans-serif" font-size="9" font-weight="600" fill="#94A3B8" letter-spacing="3.5">SOFTWARE EMPRESARIAL</text>
+    </svg>
     <span class="h-tool" id="hTool"></span>
-    <span class="priv">🔒 Tus archivos no salen de tu PC</span>
+    <span class="priv"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Sus archivos no salen de su PC</span>
   </div>
 </header>
 
@@ -579,7 +634,37 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="vendor/chart.umd.js"></script>
+<!-- ════════════════ REVISIÓN DEL CATÁLOGO PPT ════════════════ -->
+<div class="cat-modal" id="catModal" hidden>
+  <div class="cat-dialog" role="dialog" aria-modal="true" aria-labelledby="catTit">
+    <div class="cat-head">
+      <div>
+        <div class="cat-eyebrow">Catálogo fotográfico</div>
+        <h2 id="catTit">Foto principal de cada activo</h2>
+        <p class="cat-sub" id="catSub">Analizando las fotografías…</p>
+      </div>
+      <button class="cat-x" id="catCerrar" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="cat-prog" id="catProg">
+      <div class="prog-bar"><div class="prog-fill" id="catProgFill"></div></div>
+      <div class="cat-prog-txt" id="catProgTxt"></div>
+    </div>
+    <div class="cat-resumen" id="catResumen" hidden></div>
+    <div class="cat-filtros" id="catFiltros" hidden>
+      <button class="cat-fil activo" data-f="revisar">Por revisar</button>
+      <button class="cat-fil" data-f="todos">Todos</button>
+    </div>
+    <div class="cat-grid" id="catGrid"></div>
+    <div class="cat-foot">
+      <span class="cat-nota">Haga clic en la foto que debe ir como principal. Las demás se muestran como miniaturas.</span>
+      <button class="b-sec" id="catCancelar">Cancelar</button>
+      <button class="b-pri" id="catGenerar" disabled>Generar catálogo PPT</button>
+    </div>
+  </div>
+</div>
+
 <script src="vendor/pptxgen.bundle.js"></script>
+<script src="vendor/zxing.min.js"></script>
 <script type="module" src="js/app2.js"></script>
 </body>
 </html>
