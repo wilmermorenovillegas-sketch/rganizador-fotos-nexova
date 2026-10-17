@@ -7,7 +7,8 @@
  *
  * · Genérico: detección de columnas por pistas + remapeo manual del usuario.
  * · Maestro de marcas/modelos: por ahora LOCAL (Excel/JSON subido). Cuando se
- *   conecte Supabase, solo cambia la fuente de `D.maestro` — la lógica queda.
+ *   Maestro de marcas/modelos: el de la nube (Supabase, solo lectura) se carga al
+ *   procesar; el maestro local (Excel/JSON) se suma encima. La base nunca sale del PC.
  * · No se muestra el listado de "sin marca/modelo": se descarga en Excel a pedido.
  * · Cuadros resumen por dimensión con gráfico de dona (total al centro) +
  *   ranking numerado; etiquetas de cantidad siempre visibles (pantalla y PDF).
@@ -20,6 +21,11 @@ import { LOGO_AQUARIUS } from './logo-aquarius.js';
 import { leerTabla } from './shared/excel-io.js';
 import { detectarColumnas as detectarCols, puntuarHoja } from './shared/deteccion.js';
 import { $, num, esc, icono, toast, zonaArchivo, zonaLista, menu } from './shared/ui.js';
+import { descargarMaestro, construirMaestro } from './shared/maestro-nube.js';
+
+// Maestro de la nube: se descarga una vez por sesión (pares marca/modelo).
+let paresNube = null;
+let fuentesMaestro = new Set();   // 'nube' | 'local'
 
 const pct1 = (n) => (+n || 0).toFixed(1) + '%';
 
@@ -159,7 +165,7 @@ function init() {
 }
 
 function reset() {
-  D.raw = []; D.headers = []; D.cols = {}; D.clean = []; D.maestro = null; D.alertas = [];
+  D.raw = []; D.headers = []; D.cols = {}; D.clean = []; D.maestro = null; D.alertas = []; fuentesMaestro = new Set();
   filtros = {};
   destruirCharts();
   $('depDash').hidden = true;
@@ -279,12 +285,29 @@ function procesar() {
   });
   validarMM();
   calcularMetricas();
+  cargarMaestroNube();
   $('depUpload').hidden = true;
   $('depDash').hidden = false;
   $('depTitulo').textContent = `Base depurada · ${D.nombre}`;
   pintarTabs();
   irTab('resumen');
   window.scrollTo({ top: 0 });
+}
+
+/** Descarga el maestro NEXOVA (Supabase) y revalida; si no hay conexión, sigue sin él. */
+async function cargarMaestroNube() {
+  try {
+    if (!paresNube) paresNube = await descargarMaestro();
+    D.maestro = construirMaestro(paresNube, D.maestro || new Map());
+    fuentesMaestro.add('nube');
+    refrescarMM();
+  } catch {
+    toast('No se pudo conectar con el maestro de marcas en la nube. Puede cargar un maestro local en la pestaña Marca / Modelo.', 'warn');
+  }
+}
+function refrescarMM() {
+  validarMM(); calcularMetricas(); pintarTabs();
+  if (D.tab === 'mm') irTab('mm');
 }
 
 /** Clasifica un registro frente al maestro (o solo vacíos si no hay maestro). */
@@ -296,7 +319,7 @@ function clasificarMM(r) {
   if (D.maestro) {
     const m = D.maestro.get(mN);
     if (!m) return { motivo: 'Marca no registrada en el maestro', tipo: 'no_reg' };
-    if (!m.modelos.has(moN)) return { motivo: 'Modelo no registrado para esa marca', tipo: 'no_reg' };
+    if (m.modelos.size && !m.modelos.has(moN)) return { motivo: 'Modelo no registrado para esa marca', tipo: 'no_reg' };
   }
   return null;
 }
@@ -541,8 +564,9 @@ function panelMM() {
   const M = D.M;
   const marcas = marcasDetectadas();
   const noReg = marcas.filter((x) => !x.registrada);
+  const origen = [...fuentesMaestro].map((x) => (x === 'nube' ? 'maestro NEXOVA en la nube' : 'maestro local')).join(' + ');
   const estado = D.maestro
-    ? `<b>Maestro cargado</b>${num(D.maestro.size)} marcas registradas · valida contra el catálogo`
+    ? `<b>Validando contra el ${origen}</b>${num(D.maestro.size)} marcas registradas. Las marcas sin modelos registrados solo se validan por marca. Solo se descarga el catálogo: su base no sale de su PC.`
     : `<b>Sin maestro cargado</b>Mientras no cargue el catálogo de marcas y modelos, el 100% de las marcas figura como no registrada. Cargue un maestro para validar.`;
   const resumenMarcas = D.maestro
     ? `${num(noReg.length)} de ${num(marcas.length)} no registradas`
@@ -552,7 +576,7 @@ function panelMM() {
       <div class="mtxt">${estado}</div>
       <input type="file" id="depMaestro" accept=".xlsx,.xls,.csv,.json" hidden>
       <button class="b-pri b-sm" id="btnMaestro">${icono('subir')}Cargar maestro (Excel o JSON)</button>
-      ${D.maestro ? '<button class="b-ghost b-sm" id="btnMaestroClr">Quitar maestro</button>' : ''}
+      ${fuentesMaestro.has('local') ? '<button class="b-ghost b-sm" id="btnMaestroClr">Quitar maestro local</button>' : ''}
     </div>
     <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
       ${kpi('Marcas distintas', num(marcas.length), 'b')}
@@ -579,7 +603,11 @@ function panelMM() {
   $('depMaestro').onchange = (e) => { cargarMaestro(e.target.files[0]); e.target.value = ''; };
   $('btnMarcasXls').onclick = exportarMarcasExcel;
   $('btnAlertasXls').onclick = exportarAlertasExcel;
-  if (D.maestro) $('btnMaestroClr').onclick = () => { D.maestro = null; validarMM(); calcularMetricas(); pintarTabs(); irTab('mm'); };
+  if (fuentesMaestro.has('local')) $('btnMaestroClr').onclick = () => {
+    fuentesMaestro.delete('local');
+    D.maestro = fuentesMaestro.has('nube') ? construirMaestro(paresNube) : null;
+    refrescarMM();
+  };
 }
 
 // ── Maestro de marcas/modelos (fuente local; Supabase al final) ─
@@ -597,17 +625,12 @@ async function cargarMaestro(archivo) {
       if (!cMarca) { toast('El maestro necesita al menos una columna "Marca".', 'warn'); return; }
       for (const r of t.registros) pares.push({ marca: celdaATexto(r[cMarca]), modelo: cModelo ? celdaATexto(r[cModelo]) : '' });
     }
-    const mapa = new Map();
-    for (const p of pares) {
-      const mN = normalizar(p.marca); if (!mN) continue;
-      if (!mapa.has(mN)) mapa.set(mN, { nombre: String(p.marca).trim(), modelos: new Map() });
-      const moN = normalizar(p.modelo);
-      if (moN) mapa.get(mN).modelos.set(moN, String(p.modelo).trim());
-    }
-    if (!mapa.size) { toast('No se pudieron leer marcas del maestro.', 'warn'); return; }
-    D.maestro = mapa;
-    validarMM(); calcularMetricas(); pintarTabs(); irTab('mm');
-    toast(`Maestro cargado: ${num(mapa.size)} marcas.`, 'ok');
+    const local = construirMaestro(pares);
+    if (!local.size) { toast('No se pudieron leer marcas del maestro.', 'warn'); return; }
+    D.maestro = construirMaestro(pares, D.maestro || new Map());
+    fuentesMaestro.add('local');
+    refrescarMM();
+    toast(`Maestro local cargado: ${num(local.size)} marcas.`, 'ok');
   } catch (e) {
     toast(e.message, 'error', { titulo: 'No se pudo leer el maestro' });
   }
