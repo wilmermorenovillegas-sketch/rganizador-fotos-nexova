@@ -19,11 +19,9 @@ import { celdaATexto, normalizar, adivinarColumna } from './motor.js';
 import { LOGO_AQUARIUS } from './logo-aquarius.js';
 import { leerTabla } from './shared/excel-io.js';
 import { detectarColumnas as detectarCols, puntuarHoja } from './shared/deteccion.js';
+import { $, num, esc, icono, toast, zonaArchivo, zonaLista, menu } from './shared/ui.js';
 
-const $ = (id) => document.getElementById(id);
-const num = (n) => (+n || 0).toLocaleString('es-PE');
 const pct1 = (n) => (+n || 0).toFixed(1) + '%';
-const esc = (t) => String(t ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Paletas globales seleccionables por el usuario (pocas, para no saturar).
 const PALETAS = {
@@ -72,21 +70,28 @@ export const CAMPOS = [
 const DIMS_CUADROS = ['familia', 'subfamilia', 'area', 'sede', 'centro', 'responsable', 'estado', 'ubicacion', 'linea'];
 // Modelos de gráfico que el usuario puede elegir en cada cuadro.
 const TIPOS_GRAF = [
-  { v: 'dona',     t: '◕ Dona' },
-  { v: 'semi',     t: '◗ Semicírculo' },
-  { v: 'pastel',   t: '● Pastel' },
-  { v: 'barrasV',  t: '▮ Barras verticales' },
-  { v: 'barrasH',  t: '▬ Barras horizontales' },
-  { v: 'linea',    t: '∿ Línea / Área' },
-  { v: 'polar',    t: '✳ Área polar' },
-  { v: 'embudo',   t: '▽ Embudo' },
-  { v: 'piramide', t: '△ Pirámide' },
-  { v: 'dona3d',   t: '◕ Dona 3D' },
-  { v: 'pastel3d', t: '● Pastel 3D' },
-  { v: 'cono',     t: '🔺 Cono' },
+  { v: 'dona',     t: 'Dona' },
+  { v: 'semi',     t: 'Semicírculo' },
+  { v: 'pastel',   t: 'Pastel' },
+  { v: 'barrasV',  t: 'Barras verticales' },
+  { v: 'barrasH',  t: 'Barras horizontales' },
+  { v: 'linea',    t: 'Línea / Área' },
+  { v: 'polar',    t: 'Área polar' },
+  { v: 'embudo',   t: 'Embudo' },
+  { v: 'piramide', t: 'Pirámide' },
+  { v: 'dona3d',   t: 'Dona 3D' },
+  { v: 'pastel3d', t: 'Pastel 3D' },
+  { v: 'cono',     t: 'Cono' },
 ];
-// Ícono por dimensión (identidad visual de cada cuadro).
-const ICON_DIM = { familia: '🗂️', subfamilia: '🏷️', area: '🏢', sede: '📍', centro: '💰', responsable: '👤', estado: '🩺', ubicacion: '📌', linea: '🏭' };
+// Ícono por dimensión (identidad visual de cada cuadro; set de shared/ui.js).
+const icDim = (k) => icono(['familia', 'subfamilia', 'area', 'sede', 'centro', 'responsable', 'estado', 'ubicacion', 'linea'].includes(k) ? k : 'familia');
+// Grupos de la pantalla de detección.
+const GRUPOS_DET = [
+  { t: 'Identificación', ic: 'activos', ks: ['codigo', 'bar_antigua', 'bar_padre', 'descripcion', 'cod_catalogo'] },
+  { t: 'Ubicación y responsable', ic: 'sede', ks: ['sede', 'area', 'cod_ubic', 'ubicacion', 'cod_centro', 'centro', 'cod_resp', 'responsable'] },
+  { t: 'Clasificación', ic: 'familia', ks: ['cod_familia', 'familia', 'cod_subfam', 'subfamilia', 'cod_linea', 'linea'] },
+  { t: 'Características', ic: 'subfamilia', ks: ['marca', 'modelo', 'serie', 'medidas', 'capacidad', 'color', 'estado', 'detalle', 'observacion'] },
+];
 // Dimensiones que SIEMPRE se muestran, aunque la columna no esté mapeada (se ven en 0).
 const CORE_DIMS = ['familia', 'subfamilia', 'area', 'sede'];
 // Variedad de tipos para que cada cuadro salga distinto por defecto (sin repetir).
@@ -141,9 +146,9 @@ export const Depurador = { init };
 function init() {
   if (inicializado) return;
   inicializado = true;
-  $('depZona').onclick = () => $('depFile').click();
+  zonaArchivo('depZona', (f) => leerBase(f), () => $('depFile').click());
   $('depFile').onchange = (e) => { leerBase(e.target.files[0]); e.target.value = ''; };
-  dragDrop('depZona', (f) => leerBase(f));
+  menu('depBtnDescargas', 'depMenuDescargas');
   $('depProcesar').onclick = procesar;
   $('depReset').onclick = reset;
   $('depXlsClean').onclick = exportarExcelDepurado;
@@ -153,25 +158,19 @@ function init() {
   $('depPdf').onclick = exportarPDF;
 }
 
-function dragDrop(id, cb) {
-  const z = $(id);
-  z.addEventListener('dragover', (e) => { e.preventDefault(); z.classList.add('drag'); });
-  z.addEventListener('dragleave', () => z.classList.remove('drag'));
-  z.addEventListener('drop', (e) => { e.preventDefault(); z.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) cb(f); });
-}
-
 function reset() {
   D.raw = []; D.headers = []; D.cols = {}; D.clean = []; D.maestro = null; D.alertas = [];
   filtros = {};
   destruirCharts();
-  $('depDash').style.display = 'none';
-  $('depDetect').style.display = 'none';
-  $('depUpload').style.display = 'block';
+  $('depDash').hidden = true;
+  $('depDetect').hidden = true;
+  $('depUpload').hidden = false;
   const z = $('depZona');
-  z.classList.remove('ok');
-  z.querySelector('.ic').textContent = '🧹';
-  z.querySelector('.zt').textContent = 'Haz clic o arrastra el Excel aquí';
+  z.classList.remove('ok', 'aviso');
+  z.querySelector('.ic').innerHTML = icono('subir');
+  z.querySelector('.zt').textContent = 'Haga clic o arrastre el Excel aquí';
   z.querySelector('.zs').textContent = '.xlsx · .xlsm · .xls · .csv';
+  window.scrollTo({ top: 0 });
 }
 
 // Detección por puntaje con asignación global (motor compartido: shared/deteccion.js).
@@ -182,7 +181,7 @@ async function leerBase(archivo) {
   if (!archivo) return;
   try {
     const t = leerTabla(await archivo.arrayBuffer(), (h) => puntuarHoja(h, CAMPOS));
-    if (!t.registros.length) { alert('El archivo no tiene datos.'); return; }
+    if (!t.registros.length) { toast('El archivo no tiene filas con datos.', 'warn'); return; }
     D.headers = t.headers;
     D.raw = t.registros;
     D.nombre = archivo.name.replace(/\.[^.]+$/, '');
@@ -191,14 +190,10 @@ async function leerBase(archivo) {
     // asignación global sin colisiones: cada columna va a un solo campo.
     D.cols = detectarColumnas(D.headers);
 
-    const z = $('depZona');
-    z.classList.add('ok');
-    z.querySelector('.ic').textContent = '✅';
-    z.querySelector('.zt').textContent = archivo.name;
-    z.querySelector('.zs').textContent = `${num(D.raw.length)} registros · ${D.headers.length} columnas`;
+    zonaLista('depZona', archivo.name, `${num(D.raw.length)} registros · ${D.headers.length} columnas · hoja "${t.hoja}"`);
     pintarDeteccion();
   } catch (e) {
-    alert('Error leyendo el archivo: ' + e.message);
+    toast(e.message, 'error', { titulo: 'No se pudo leer el archivo' });
   }
 }
 
@@ -206,29 +201,44 @@ function pintarDeteccion() {
   const opts = (sel) => ['<option value="">— (ninguna)</option>']
     .concat(D.headers.map((h) => `<option value="${esc(h)}"${h === sel ? ' selected' : ''}>${esc(h)}</option>`))
     .join('');
-  $('depDetGrid').innerHTML = CAMPOS.map((c) => {
+  const fila = (c) => {
     const val = D.cols[c.k];
     return `<div class="det-row ${val ? 'hit' : ''} ${c.key ? 'key' : ''}">
-      <div class="dl"><span class="dot"></span>${c.l}${c.key ? ' *' : ''}</div>
-      <select data-k="${c.k}">${opts(val)}</select>
+      <label class="dl" for="det_${c.k}"><span class="dot"></span>${c.l}${c.key ? ' · obligatorio' : ''}</label>
+      <select id="det_${c.k}" data-k="${c.k}">${opts(val)}</select>
     </div>`;
+  };
+  $('depDetGrid').innerHTML = GRUPOS_DET.map((g) => {
+    const cs = g.ks.map((k) => CAMPOS.find((c) => c.k === k)).filter(Boolean);
+    const n = cs.filter((c) => D.cols[c.k]).length;
+    return `<div class="det-grupo"><h3>${icono(g.ic)}${g.t} <span>· ${n} de ${cs.length}</span></h3>
+      <div class="det-grid">${cs.map(fila).join('')}</div></div>`;
   }).join('');
   $('depDetGrid').querySelectorAll('select').forEach((s) => {
     s.onchange = () => {
       D.cols[s.dataset.k] = s.value;
       s.closest('.det-row').classList.toggle('hit', !!s.value);
+      resumenDeteccion();
       revisarProcesable();
     };
   });
-  $('depDetect').style.display = 'block';
+  $('depDetect').hidden = false;
+  resumenDeteccion();
   revisarProcesable();
+}
+
+function resumenDeteccion() {
+  const n = CAMPOS.filter((c) => D.cols[c.k]).length;
+  $('depDetRes').innerHTML = `<span class="lbl">Columnas detectadas</span>
+    <span class="det-meter"><i style="width:${Math.round((n / CAMPOS.length) * 100)}%"></i></span>
+    <b>${n} de ${CAMPOS.length} campos</b><span class="mini-note" style="margin:0">Corrija cualquier columna mal asignada.</span>`;
 }
 
 function revisarProcesable() {
   const ok = !!D.cols.codigo;
   $('depProcesar').disabled = !ok;
   $('depDetAviso').innerHTML = ok ? ''
-    : `<div class="aviso warn"><span>⚠️</span><div>Selecciona al menos la columna de <b>Código</b> para poder depurar.</div></div>`;
+    : `<div class="aviso warn">${icono('alerta')}<div>Seleccione al menos la columna de <b>Código</b> para poder depurar.</div></div>`;
 }
 
 // ── 2) Depurar ──────────────────────────────────────────────
@@ -269,8 +279,8 @@ function procesar() {
   });
   validarMM();
   calcularMetricas();
-  $('depUpload').style.display = 'none';
-  $('depDash').style.display = 'block';
+  $('depUpload').hidden = true;
+  $('depDash').hidden = false;
   $('depTitulo').textContent = `Base depurada · ${D.nombre}`;
   pintarTabs();
   irTab('resumen');
@@ -337,7 +347,7 @@ const TABS = [
 ];
 
 function pintarTabs() {
-  $('depTabs').innerHTML = TABS.map((t) => `<button class="dtab${t.k === D.tab ? ' activo' : ''}" data-t="${t.k}">${t.l}</button>`).join('');
+  $('depTabs').innerHTML = TABS.map((t) => `<button class="dtab${t.k === D.tab ? ' activo' : ''}" role="tab" aria-selected="${t.k === D.tab}" data-t="${t.k}">${t.l}</button>`).join('');
   $('depTabs').querySelectorAll('.dtab').forEach((b) => { b.onclick = () => irTab(b.dataset.t); });
   const M = D.M;
   $('depKpis').innerHTML = [
@@ -352,7 +362,7 @@ function pintarTabs() {
 
 function irTab(t) {
   D.tab = t;
-  $('depTabs').querySelectorAll('.dtab').forEach((b) => b.classList.toggle('activo', b.dataset.t === t));
+  $('depTabs').querySelectorAll('.dtab').forEach((b) => { b.classList.toggle('activo', b.dataset.t === t); b.setAttribute('aria-selected', String(b.dataset.t === t)); });
   destruirCharts();
   if (t === 'resumen') panelCuadros();
   else if (t === 'calidad') panelCalidad();
@@ -379,10 +389,12 @@ function heroKpis() {
   const rows = filasFiltradas(null);
   const distintos = (k) => new Set(rows.map((r) => String(r[k] ?? '').trim()).filter((v) => v)).size;
   const filtrado = Object.keys(filtros).length > 0;
-  const cards = [{ ic: '📦', n: num(rows.length), l: 'Activos' + (filtrado ? ' (filtrado)' : '') }];
+  const cards = [{ ic: icono('activos'), n: num(rows.length), l: 'Activos' + (filtrado ? ' (filtrado)' : '') }];
   CORE_DIMS.forEach((k) => {
     if (dimVacio(k)) return;
-    cards.push({ ic: ICON_DIM[k] || '📊', n: num(distintos(k)), l: CAMPOS.find((c) => c.k === k).l });
+    const n = distintos(k);
+    const l = CAMPOS.find((c) => c.k === k).l.replace(/ \(.*\)$/, '');
+    cards.push({ ic: icDim(k), n: num(n), l: n === 1 ? l : (l === 'Área' ? 'Áreas' : `${l}s`) });
   });
   return `<div class="hero-kpis">${cards.map((c) => `<div class="hkpi"><div class="hkpi-ic">${c.ic}</div><div class="hkpi-n">${c.n}</div><div class="hkpi-l">${esc(c.l)}</div></div>`).join('')}</div>`;
 }
@@ -391,13 +403,13 @@ function heroKpis() {
 function chipsFiltros() {
   const keys = Object.keys(filtros);
   if (!keys.length) return '';
-  return `<div class="filtro-bar"><span class="filtro-lbl">🔎 Filtros activos:</span>${keys.map((k) => `<button class="filtro-chip" data-k="${k}">${ICON_DIM[k] || ''} ${esc(CAMPOS.find((c) => c.k === k).l)}: <b>${esc(filtros[k])}</b> ✕</button>`).join('')}<button class="filtro-clear" id="filtroClear">Limpiar todo</button></div>`;
+  return `<div class="filtro-bar"><span class="filtro-lbl">${icono('filtro')}Filtros activos:</span>${keys.map((k) => `<button class="filtro-chip" data-k="${k}" aria-label="Quitar filtro ${esc(CAMPOS.find((c) => c.k === k).l)}">${esc(CAMPOS.find((c) => c.k === k).l)}: <b>${esc(filtros[k])}</b> ${icono('cerrar')}</button>`).join('')}<button class="filtro-clear" id="filtroClear">Limpiar todo</button></div>`;
 }
 
 function panelCuadros() {
   const dims = dimsDashboard();
   if (!dims.length) {
-    $('depPanel').innerHTML = `<div class="aviso warn"><span>ℹ️</span><div>No se detectaron dimensiones para resumir. Revisa el mapeo de columnas.</div></div>`;
+    $('depPanel').innerHTML = `<div class="aviso info">${icono('info')}<div>No se detectaron dimensiones para resumir. Revise el mapeo de columnas.</div></div>`;
     return;
   }
   // Tipo por defecto variado (sin repetir) para cada dimensión.
@@ -410,8 +422,8 @@ function panelCuadros() {
     ${chipsFiltros()}
     ${heroKpis()}
     <div class="dash-tools">
-      <div class="dash-tools-l"><b>${num(dims.length)}</b> dimensiones · <b>${num(filasFiltradas(null).length)}</b> activos${Object.keys(filtros).length ? ' (filtrado)' : ''} · 💡 clic en una categoría para filtrar</div>
-      <label class="dash-pal">🎨 Colores
+      <div class="dash-tools-l"><b>${num(dims.length)}</b> dimensiones · <b>${num(filasFiltradas(null).length)}</b> activos${Object.keys(filtros).length ? ' (filtrado)' : ''} · haga clic en una categoría del ranking para filtrar todo el dashboard</div>
+      <label class="dash-pal">${icono('paleta')}Colores
         <select id="selPaleta">${opPal}</select>
       </label>
     </div>
@@ -421,14 +433,14 @@ function panelCuadros() {
     if (dimVacio(k)) {
       return `<div class="cuadro cuadro-vacio">
         <div class="cuadro-head">
-          <span class="cuadro-ico">${ICON_DIM[k] || '📊'}</span>
+          <span class="cuadro-ico">${icDim(k)}</span>
           <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}</span>
           <span class="cuadro-tot">0 activos</span>
         </div>
         <div class="cuadro-body">
           <div class="cuadro-graf-box cuadro-vacio-box">
             <div class="vacio-msg"><div class="vacio-n">0</div><div class="vacio-t">Sin datos para esta dimensión</div>
-              <div class="vacio-hint">La columna <b>${esc(label)}</b> no está mapeada o está vacía. Mapéala en la pantalla de detección para ver este gráfico.</div></div>
+              <div class="vacio-hint">La columna <b>${esc(label)}</b> no está mapeada o está vacía. Asígnela en la pantalla de detección para ver este gráfico.</div></div>
           </div>
         </div>
       </div>`;
@@ -438,16 +450,16 @@ function panelCuadros() {
     const topPct = top && total ? (top.veces / total) * 100 : 0;
     const esHero = (k === heroKey);
     const head = `<div class="cuadro-head">
-        <span class="cuadro-ico">${ICON_DIM[k] || '📊'}</span>
+        <span class="cuadro-ico">${icDim(k)}</span>
         <span class="cuadro-titulo">Activos por ${esc(label.toLowerCase())}${esHero ? ' <span class="hero-badge">destacado</span>' : ''}</span>
         <span class="cuadro-tot">${num(arr.length)} ${arr.length === 1 ? 'categoría' : 'categorías'} · ${num(total)} activos</span>
-        <select class="cuadro-tipo" data-k="${k}">${opciones(tipo)}</select>
+        <select class="cuadro-tipo" data-k="${k}" aria-label="Tipo de gráfico para ${esc(label.toLowerCase())}">${opciones(tipo)}</select>
       </div>`;
     const graf = `<div class="cuadro-graf-box">
           <div class="cuadro-graf"><canvas id="cq_${k}" width="280" height="280"></canvas>
             <div class="cuadro-center"><b>${num(total)}</b><span>activos</span></div></div>
         </div>`;
-    const insight = top ? `<div class="cuadro-insight">🏆 <b>${esc(top.valor)}</b> es la categoría con más activos — concentra el <b>${pct1(topPct)}</b> del total</div>` : '';
+    const insight = top ? `<div class="cuadro-insight">${icono('trofeo')}<span><b>${esc(top.valor)}</b> es la categoría con más activos — concentra el <b>${pct1(topPct)}</b> del total</span></div>` : '';
     const rank = `<div class="cuadro-rank-box">
           <div class="rank-tit">Ranking — de mayor a menor</div>
           <div class="rk-head">
@@ -457,7 +469,7 @@ function panelCuadros() {
           ${list.map((it) => {
             const clic = it.nombre && it.nombre !== 'Sin dato' && !/^Otros \(/.test(it.nombre);
             const activo = filtros[k] === it.nombre;
-            return `<div class="rk-row${clic ? ' rk-click' : ''}${activo ? ' rk-activo' : ''}"${clic ? ` data-k="${k}" data-val="${esc(it.nombre).replace(/"/g, '&quot;')}"` : ''}>
+            return `<div class="rk-row${clic ? ' rk-click' : ''}${activo ? ' rk-activo' : ''}"${clic ? ` data-k="${k}" data-val="${esc(it.nombre)}" tabindex="0" role="button" aria-pressed="${activo}"` : ''}>
             <span class="rk-n">${it.n}</span><span class="rk-sw" style="background:${it.color}"></span>
             <span class="rk-name" title="${esc(it.nombre)}">${esc(it.nombre)}</span>
             <span class="rk-val">${num(it.veces)} <em>${pct1(it.pct)}</em></span>
@@ -476,7 +488,10 @@ function panelCuadros() {
   });
   $('selPaleta').onchange = (e) => { paletaActual = e.target.value; panelCuadros(); };
   // Filtro cruzado: clic en fila del ranking, chips y limpiar.
-  $('depPanel').querySelectorAll('.rk-click').forEach((el) => { el.onclick = () => aplicarFiltro(el.dataset.k, el.dataset.val); });
+  $('depPanel').querySelectorAll('.rk-click').forEach((el) => {
+    el.onclick = () => aplicarFiltro(el.dataset.k, el.dataset.val);
+    el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); aplicarFiltro(el.dataset.k, el.dataset.val); } };
+  });
   $('depPanel').querySelectorAll('.filtro-chip').forEach((b) => { b.onclick = () => { delete filtros[b.dataset.k]; panelCuadros(); }; });
   const clr = $('filtroClear'); if (clr) clr.onclick = () => { filtros = {}; panelCuadros(); };
 }
@@ -487,25 +502,25 @@ function panelCalidad() {
     const cl = semClass(c.pct);
     return `<div class="q-row">
       <span class="q-n">${i}</span>
-      <div class="qn">${esc(c.l)} <span style="color:var(--gris);font-weight:400">· ${num(c.llenos)}/${num(M.total)}</span></div>
+      <div class="qn">${esc(c.l)} <span>· ${num(c.llenos)} de ${num(M.total)}</span></div>
       <div class="q-bar"><div class="q-bar-fill ${cl}" style="width:${c.pct.toFixed(0)}%"></div></div>
       <div class="q-pct ${cl}">${pct1(c.pct)}</div>
     </div>`;
   };
-  const dupBlock = (titulo, d) => `<div class="cx" style="background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:14px">
+  const dupBlock = (titulo, d) => `<div class="dup-box">
       <div class="gtitle">${titulo}: ${num(d.n)} valores repetidos</div>
       ${d.n ? `<div class="tabla-wrap" style="margin:0"><table><thead><tr><th style="width:34px">N°</th><th>Valor</th><th class="r">Veces</th></tr></thead><tbody>
         ${d.lista.slice(0, 10).map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.valor)}</td><td class="r">${num(x.veces)}</td></tr>`).join('')}
       </tbody></table></div>` : '<div class="mini-note">Sin duplicados.</div>'}
     </div>`;
   $('depPanel').innerHTML = `
-    <div class="res-tit" style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">Completitud por campo</div>
+    <div class="res-tit">Completitud por campo</div>
     <div class="q-list" style="margin-bottom:16px">${M.compl.map((c, i) => bar(c, i + 1)).join('')}</div>
-    <div class="graficos-grid" style="grid-template-columns:1fr 1fr">
+    <div class="dup-grid">
       ${dupBlock('Códigos duplicados', M.dupCodigo)}
       ${dupBlock('Series duplicadas', M.dupSerie)}
     </div>
-    ${M.sinCodigo ? `<div class="aviso warn" style="margin-top:12px"><span>⚠️</span><div><b>${num(M.sinCodigo)} registros sin código.</b> No podrán identificarse de forma única.</div></div>` : ''}`;
+    ${M.sinCodigo ? `<div class="aviso warn" style="margin-top:12px">${icono('alerta')}<div><b>${num(M.sinCodigo)} registros sin código.</b> No podrán identificarse de forma única.</div></div>` : ''}`;
 }
 
 /** Marcas distintas detectadas en la base, con su estado frente al maestro. */
@@ -528,7 +543,7 @@ function panelMM() {
   const noReg = marcas.filter((x) => !x.registrada);
   const estado = D.maestro
     ? `<b>Maestro cargado</b>${num(D.maestro.size)} marcas registradas · valida contra el catálogo`
-    : `<b>Sin maestro cargado</b>Aún no subes el catálogo, así que el 100% de las marcas figuran como no registradas. Carga un maestro para validar.`;
+    : `<b>Sin maestro cargado</b>Mientras no cargue el catálogo de marcas y modelos, el 100% de las marcas figura como no registrada. Cargue un maestro para validar.`;
   const resumenMarcas = D.maestro
     ? `${num(noReg.length)} de ${num(marcas.length)} no registradas`
     : `${num(marcas.length)} marcas · 100% no registradas (sin maestro)`;
@@ -536,16 +551,16 @@ function panelMM() {
     <div class="maestro-box">
       <div class="mtxt">${estado}</div>
       <input type="file" id="depMaestro" accept=".xlsx,.xls,.csv,.json" hidden>
-      <button class="b-desc teal" id="btnMaestro">⬆ Cargar maestro (Excel/JSON)</button>
-      ${D.maestro ? '<button class="b-desc" id="btnMaestroClr">Quitar</button>' : ''}
+      <button class="b-pri b-sm" id="btnMaestro">${icono('subir')}Cargar maestro (Excel o JSON)</button>
+      ${D.maestro ? '<button class="b-ghost b-sm" id="btnMaestroClr">Quitar maestro</button>' : ''}
     </div>
-    <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+    <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
       ${kpi('Marcas distintas', num(marcas.length), 'b')}
       ${kpi('Marca/modelo OK', num(M.mmOk), 'ok')}
       ${kpi('Con campo vacío', num(M.alertasVacio), M.alertasVacio ? 'warn' : 'ok')}
       ${kpi('No registradas', num(noReg.length), noReg.length ? 'warn' : 'ok')}
     </div>
-    <div class="res-tit" style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Marcas detectadas — ${resumenMarcas}</div>
+    <div class="res-tit">Marcas detectadas — ${resumenMarcas}</div>
     <div class="tabla-wrap">
       <div style="max-height:360px;overflow:auto"><table><thead><tr>
         <th style="width:36px">N°</th><th>Marca</th><th class="r">Activos</th><th>Estado</th>
@@ -555,13 +570,13 @@ function panelMM() {
           || `<tr><td colspan="4" style="text-align:center;color:var(--gris);padding:16px">No hay marcas en la base.</td></tr>`}
       </tbody></table></div>
     </div>
-    <div class="mini-note">${marcas.length > 30 ? `Se muestran 30 de ${num(marcas.length)}. ` : ''}Descarga el detalle completo abajo.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-      <button class="b-desc teal" id="btnMarcasXls" ${marcas.length ? '' : 'disabled'}>⬇ Marcas detectadas (Excel)</button>
-      <button class="b-desc" id="btnAlertasXls" ${D.alertas.length ? '' : 'disabled'}>⬇ Activos sin marca/modelo (Excel)</button>
+    <div class="mini-note">${marcas.length > 30 ? `Se muestran 30 de ${num(marcas.length)}. ` : ''}El detalle completo se descarga en Excel.</div>
+    <div class="fila-acciones">
+      <button class="b-sec b-sm" id="btnMarcasXls" ${marcas.length ? '' : 'disabled'}>${icono('bajar')}Marcas detectadas (Excel)</button>
+      <button class="b-sec b-sm" id="btnAlertasXls" ${D.alertas.length ? '' : 'disabled'}>${icono('bajar')}Activos sin marca o modelo registrado (Excel)</button>
     </div>`;
   $('btnMaestro').onclick = () => $('depMaestro').click();
-  $('depMaestro').onchange = (e) => cargarMaestro(e.target.files[0]);
+  $('depMaestro').onchange = (e) => { cargarMaestro(e.target.files[0]); e.target.value = ''; };
   $('btnMarcasXls').onclick = exportarMarcasExcel;
   $('btnAlertasXls').onclick = exportarAlertasExcel;
   if (D.maestro) $('btnMaestroClr').onclick = () => { D.maestro = null; validarMM(); calcularMetricas(); pintarTabs(); irTab('mm'); };
@@ -579,7 +594,7 @@ async function cargarMaestro(archivo) {
       const t = leerTabla(await archivo.arrayBuffer(), (h) => (adivinarColumna(h, ['marca', 'fabricante', 'brand']) ? 1 : 0));
       const cMarca = adivinarColumna(t.headers, ['marca', 'fabricante', 'brand']);
       const cModelo = adivinarColumna(t.headers, ['modelo', 'model']);
-      if (!cMarca) { alert('El maestro necesita al menos una columna "Marca".'); return; }
+      if (!cMarca) { toast('El maestro necesita al menos una columna "Marca".', 'warn'); return; }
       for (const r of t.registros) pares.push({ marca: celdaATexto(r[cMarca]), modelo: cModelo ? celdaATexto(r[cModelo]) : '' });
     }
     const mapa = new Map();
@@ -589,11 +604,12 @@ async function cargarMaestro(archivo) {
       const moN = normalizar(p.modelo);
       if (moN) mapa.get(mN).modelos.set(moN, String(p.modelo).trim());
     }
-    if (!mapa.size) { alert('No se pudieron leer marcas del maestro.'); return; }
+    if (!mapa.size) { toast('No se pudieron leer marcas del maestro.', 'warn'); return; }
     D.maestro = mapa;
     validarMM(); calcularMetricas(); pintarTabs(); irTab('mm');
+    toast(`Maestro cargado: ${num(mapa.size)} marcas.`, 'ok');
   } catch (e) {
-    alert('Error leyendo el maestro: ' + e.message);
+    toast(e.message, 'error', { titulo: 'No se pudo leer el maestro' });
   }
 }
 
@@ -852,7 +868,7 @@ function styleHead(row) {
 }
 
 async function exportarExcelDepurado() {
-  if (!D.clean.length) { alert('Primero procesa una base.'); return; }
+  if (!D.clean.length) { toast('Primero procese una base.', 'warn'); return; }
   const cols = camposOrdenados();
   const lastCol = cols.length + 1;
   const HROW = 6;                                   // fila de cabeceras de la tabla
@@ -891,7 +907,7 @@ async function exportarExcelDepurado() {
 
 async function exportarMarcasExcel() {
   const marcas = marcasDetectadas();
-  if (!marcas.length) { alert('No hay marcas para exportar.'); return; }
+  if (!marcas.length) { toast('No hay marcas para exportar.', 'warn'); return; }
   const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
   const ws = wb.addWorksheet('MARCAS DETECTADAS');
   ws.columns = [{ header: 'N°', key: 'n', width: 6 }, { header: 'MARCA', key: 'm', width: 32 }, { header: 'ACTIVOS', key: 'a', width: 12 }, { header: 'ESTADO', key: 'e', width: 18 }];
@@ -902,7 +918,7 @@ async function exportarMarcasExcel() {
 }
 
 async function exportarExcelCalidad() {
-  if (!D.clean.length) { alert('Primero procesa una base.'); return; }
+  if (!D.clean.length) { toast('Primero procese una base.', 'warn'); return; }
   const M = D.M;
   const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
 
@@ -933,7 +949,7 @@ async function exportarExcelCalidad() {
 }
 
 async function exportarAlertasExcel() {
-  if (!D.alertas.length) { alert('No hay activos sin marca/modelo para exportar.'); return; }
+  if (!D.alertas.length) { toast('No hay activos sin marca o modelo para exportar.', 'warn'); return; }
   const wb = new ExcelJS.Workbook(); wb.creator = 'NEXOVA Suite';
   const wa = wb.addWorksheet('SIN MARCA-MODELO');
   wa.columns = [{ header: 'N°', key: 'n', width: 6 }, { header: 'Fila base', key: 'f', width: 9 }, { header: 'Código', key: 'c', width: 20 },
@@ -964,9 +980,9 @@ function cuadroAPng(k, cont, opts = {}) {
 
 /** Excel del dashboard: una hoja con el ranking de cada dimensión (Familia, Subfamilia, Área, Sede…). */
 async function exportarExcelDashboard() {
-  if (!D.clean.length) { alert('Primero procesa una base.'); return; }
+  if (!D.clean.length) { toast('Primero procese una base.', 'warn'); return; }
   const dims = dimsDashboard().filter((k) => !dimVacio(k));
-  if (!dims.length) { alert('No hay dimensiones con datos para el dashboard.'); return; }
+  if (!dims.length) { toast('No hay dimensiones con datos para el dashboard.', 'warn'); return; }
   const cont = document.createElement('div');
   cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
   document.body.appendChild(cont);
@@ -1021,9 +1037,9 @@ async function exportarExcelDashboard() {
 
 /** Word (.doc) del dashboard: gráfico + tabla por dimensión. Abre en MS Word. */
 async function exportarWordDashboard() {
-  if (!D.clean.length) { alert('Primero procesa una base.'); return; }
+  if (!D.clean.length) { toast('Primero procese una base.', 'warn'); return; }
   const dims = dimsDashboard().filter((k) => !dimVacio(k));
-  if (!dims.length) { alert('No hay dimensiones con datos para el dashboard.'); return; }
+  if (!dims.length) { toast('No hay dimensiones con datos para el dashboard.', 'warn'); return; }
   const cont = document.createElement('div');
   cont.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
   document.body.appendChild(cont);
@@ -1055,7 +1071,7 @@ async function exportarWordDashboard() {
 }
 
 async function exportarPDF() {
-  if (!D.clean.length) { alert('Primero procesa una base.'); return; }
+  if (!D.clean.length) { toast('Primero procese una base.', 'warn'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const M = 16, W = 210; const m = D.M;

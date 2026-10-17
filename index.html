@@ -3,445 +3,125 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEXOVA Suite · Plataforma de Inventarios</title>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --teal:#0F766E;--teal-h:#0D9488;--teal-bg:#F0FDFA;--teal-100:#CCFBF1;
-  --slate:#1E293B;--slate-950:#0F172A;--gris:#94A3B8;--gris-200:#E2E8F0;--gris-100:#F1F5F9;
-  --fondo:#F4F6F8;--blanco:#fff;--ambar:#D97706;--ambar-bg:#FEF3C7;
-  --rojo:#B91C1C;--rojo-bg:#FEE2E2;--verde:#059669;--verde-bg:#D1FAE5;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--fondo);color:var(--slate);min-height:100vh;-webkit-font-smoothing:antialiased}
-
-/* ══ HEADER ══ */
-header{background:var(--slate);border-bottom:3px solid var(--teal);padding:0 24px;position:sticky;top:0;z-index:40}
-.hbar{max-width:1440px;margin:0 auto;height:58px;display:flex;align-items:center;gap:12px}
-.hbar .logo{height:36px;width:auto;display:block;flex-shrink:0}
-.h-back{background:transparent;border:1px solid #334155;color:#CBD5E1;font-family:'Sora',sans-serif;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer;display:none;align-items:center;gap:6px}
-.h-back:hover{border-color:var(--teal-h);color:#fff}
-.h-tool{font-size:12.5px;color:#0D9488;letter-spacing:.04em;border-left:1px solid #334155;padding-left:12px;font-weight:600;display:none}
-.priv{font-size:11.5px;color:var(--gris);margin-left:auto;display:flex;align-items:center;gap:6px}
-
-.view{display:none}.view.visible{display:block}
-
-/* ══ HUB ══ */
-.hub{max-width:1440px;margin:0 auto;padding:38px 24px 90px}
-.hub-hero{position:relative;background:linear-gradient(135deg,#0F766E 0%,#0D9488 55%,#0891B2 100%);border-radius:22px;padding:40px 44px;color:#fff;overflow:hidden;margin-bottom:34px}
-.hub-hero::after{content:"";position:absolute;right:-80px;top:-80px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%)}
-.hub-hero .rings{position:absolute;right:24px;bottom:-40px;opacity:.35;pointer-events:none}
-.hub-eyebrow{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#A7F3D0;margin-bottom:12px}
-.hub-hero h1{font-family:'Sora',sans-serif;font-size:32px;font-weight:800;line-height:1.1;letter-spacing:-.01em;max-width:640px}
-.hub-hero p{font-size:15px;color:#D1FAE5;margin-top:12px;max-width:600px;line-height:1.55}
-.hub-stats{display:flex;gap:26px;margin-top:26px;flex-wrap:wrap;position:relative;z-index:1}
-.hub-stat .n{font-family:'Sora',sans-serif;font-size:24px;font-weight:800;line-height:1}
-.hub-stat .l{font-size:11.5px;color:#A7F3D0;margin-top:3px;font-weight:600}
-.hub-sec{font-family:'Sora',sans-serif;font-size:14px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin:0 4px 16px}
-
-.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:18px}
-.tool-card{position:relative;background:var(--blanco);border:1px solid var(--gris-200);border-radius:18px;padding:24px;transition:transform .18s,box-shadow .18s,border-color .18s;display:flex;flex-direction:column;gap:15px;min-height:196px;overflow:hidden}
-.tool-card::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--teal),var(--teal-h));opacity:0;transition:.18s}
-.tool-card.activa{cursor:pointer}
-.tool-card.activa:hover{transform:translateY(-4px);box-shadow:0 16px 36px rgba(15,118,110,.16);border-color:var(--teal)}
-.tool-card.activa:hover::before{opacity:1}
-.tool-card.soon{opacity:.66}
-.tool-icon{width:54px;height:54px;border-radius:15px;background:var(--teal-bg);display:grid;place-items:center;color:var(--teal);flex-shrink:0}
-.tool-card.soon .tool-icon{background:var(--gris-100);color:var(--gris)}
-.tool-icon svg{width:28px;height:28px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.tool-title{font-family:'Sora',sans-serif;font-weight:700;font-size:17.5px;color:var(--slate);line-height:1.25}
-.tool-desc{font-size:13px;color:#64748B;line-height:1.5;flex:1}
-.tool-foot{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
-.chip{font-size:10.5px;font-weight:700;padding:3px 11px;border-radius:20px;letter-spacing:.02em}
-.chip.on{background:var(--teal-100);color:#115E59}
-.chip.soon{background:var(--gris-100);color:#64748B}
-.tool-open{font-size:13px;font-weight:700;color:var(--teal);font-family:'Sora',sans-serif;display:flex;align-items:center;gap:5px}
-.tool-open svg{width:15px;height:15px;stroke:currentColor;stroke-width:2;fill:none}
-.hub-foot{text-align:center;margin-top:40px;font-size:12px;color:var(--gris)}
-
-/* ══ WIZARD ══ */
-.org{max-width:1200px;margin:0 auto;padding:30px 24px 130px}
-.wiz{display:flex;align-items:center;margin-bottom:30px}
-.wstep{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--gris);transition:.2s}
-.wstep.activo{color:var(--teal)}.wstep.listo{color:var(--verde)}
-.wnum{width:26px;height:26px;border-radius:50%;border:2px solid currentColor;display:grid;place-items:center;font-size:11px;font-weight:800;flex-shrink:0}
-.wstep.activo .wnum{background:var(--teal);color:#fff;border-color:var(--teal)}
-.wstep.listo .wnum{background:var(--verde);color:#fff;border-color:var(--verde)}
-.wline{flex:1;height:2px;background:var(--gris-200);margin:0 8px}.wline.ok{background:var(--verde)}
-.pantalla{display:none}.pantalla.visible{display:block}
-
-.card{background:var(--blanco);border:1px solid var(--gris-200);border-radius:14px;padding:28px;box-shadow:0 1px 3px rgba(15,23,42,.05);margin-bottom:14px}
-.card h2{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px}
-.card>p{font-size:13.5px;color:#64748B;margin-bottom:24px;line-height:1.5}
-
-.zona{border:2px dashed var(--gris-200);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:.15s;background:#FAFBFC}
-.zona:hover,.zona.drag{border-color:var(--teal);background:var(--teal-bg)}
-.zona .ic{font-size:36px;margin-bottom:10px}
-.zona .zt{font-weight:700;font-size:15px;color:var(--slate);margin-bottom:4px}
-.zona .zs{font-size:12.5px;color:var(--gris)}
-.zona.ok{border-style:solid;border-color:var(--teal);background:var(--teal-bg);padding:16px 20px;display:flex;align-items:center;gap:14px;text-align:left}
-.zona.ok .ic{font-size:22px;margin-bottom:0;flex-shrink:0}
-.zona.ok .zt{font-size:14px;margin-bottom:2px}
-.drag-hint{font-size:11.5px;color:var(--gris);text-align:center;margin-top:8px}
-.tag{display:inline-block;background:#fff;border:1px solid var(--gris-200);border-radius:20px;padding:3px 10px;font-size:11.5px;margin:3px 4px 0 0;color:#475569}
-.tag b{color:var(--teal)}
-
-.carpetas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
-.clabel{font-size:11px;font-weight:700;color:#64748B;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-
-.confirm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
-.citem{background:var(--gris-100);border-radius:9px;padding:12px 14px}
-.citem .cl{font-size:10.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
-.citem .cv{font-size:13px;font-weight:700;color:var(--slate);word-break:break-all}
-
-.modos{display:flex;gap:8px;margin-bottom:20px}
-.modo{border:1px solid var(--gris-200);border-radius:8px;padding:11px 16px;cursor:pointer;flex:1;transition:.12s}
-.modo:hover{border-color:var(--teal-h)}.modo.sel{border-color:var(--teal);background:var(--teal-bg);box-shadow:inset 0 0 0 1px var(--teal)}
-.modo b{display:block;font-size:13.5px;font-weight:700;color:var(--slate);margin-bottom:2px}
-.modo span{font-size:11.5px;color:#64748B}
-
-.btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
-button{font-family:'Sora',sans-serif;font-weight:600;font-size:14px;padding:12px 22px;border-radius:9px;border:none;cursor:pointer;transition:.14s;white-space:nowrap}
-button:disabled{opacity:.4;cursor:not-allowed}
-.b-pri{background:var(--teal);color:#fff}.b-pri:hover:not(:disabled){background:var(--teal-h)}
-.b-sec{background:var(--blanco);color:var(--teal);border:1.5px solid var(--teal)}.b-sec:hover:not(:disabled){background:var(--teal-bg)}
-.b-grande{width:100%;font-size:16px;padding:16px;border-radius:10px;background:var(--teal);color:#fff;margin-top:4px}
-.b-grande:hover:not(:disabled){background:var(--teal-h)}
-
-/* PROGRESO */
-.prog-wrap{margin:20px 0;display:none}
-.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.prog-txt{font-size:13px;color:#64748B;min-height:20px}
-.prog-tiempo{font-size:13px;color:var(--teal);font-weight:700;font-family:'Sora',sans-serif;font-variant-numeric:tabular-nums}
-.prog-bar{height:10px;background:var(--gris-200);border-radius:5px;overflow:hidden}
-.prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--teal-h));border-radius:5px;transition:width .3s}
-
-.completado{display:none;align-items:center;gap:12px;background:var(--verde-bg);border:1.5px solid var(--verde);border-radius:10px;padding:16px 20px;margin-top:14px}
-.completado span{font-size:26px}
-#completado-msg{font-size:14px;font-weight:700;color:#065F46}
-.logbox{background:var(--slate-950);color:#94A3B8;border-radius:8px;padding:12px 14px;font-family:ui-monospace,monospace;font-size:11.5px;max-height:120px;overflow-y:auto;margin-top:10px;white-space:pre-wrap;display:none}
-
-/* ══ DASHBOARD ══ */
-.dash-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
-.dash-header h2{margin-bottom:0}
-.desc-btns{display:flex;gap:8px;flex-wrap:wrap}
-.b-desc{background:var(--slate);color:#fff;font-size:12px;padding:8px 13px;border-radius:7px}
-.b-desc:hover{background:var(--slate-950)}
-.b-desc.teal{background:var(--teal)}.b-desc.teal:hover{background:var(--teal-h)}
-
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
-.kpi{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:13px 15px}
-.kpi .kl{font-size:9.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em}
-.kpi .kv{font-family:'Sora',sans-serif;font-size:23px;font-weight:700;margin-top:4px;line-height:1}
-.kpi .ks{font-size:10.5px;color:var(--gris);margin-top:3px}
-.kpi.ok .kv{color:var(--teal)}.kpi.warn .kv{color:var(--ambar)}.kpi.bad .kv{color:var(--rojo)}
-
-.aviso{border-radius:9px;padding:12px 16px;margin-bottom:12px;font-size:13px;display:flex;gap:10px;line-height:1.45}
-.aviso.warn{background:var(--ambar-bg);border-left:3px solid var(--ambar);color:#92400E}
-.aviso b{display:block;margin-bottom:2px;font-weight:700}
-
-.dim-controls{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.dim-controls>label{font-size:11.5px;font-weight:700;color:#64748B}
-.dtabs{display:flex;gap:6px;flex-wrap:wrap}
-.dtab{background:var(--gris-100);color:#475569;border:1px solid transparent;font-family:'Sora',sans-serif;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px}
-.dtab:hover{border-color:var(--gris-200)}
-.dtab.activo{background:var(--teal);color:#fff}
-.dim-controls select{padding:7px 10px;border:1px solid var(--gris-200);border-radius:7px;font-size:13px;color:var(--slate);background:#fff;font-family:'DM Sans',sans-serif}
-.badge{display:inline-block;background:rgba(15,23,42,.08);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700}
-.dtab.activo .badge{background:rgba(255,255,255,.28)}
-.badge.empty{opacity:.5}
-
-.graficos-grid{display:grid;grid-template-columns:320px 1fr;gap:12px;margin-bottom:14px}
-.gpanel{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:16px;min-width:0}
-.gtitle{font-size:11.5px;font-weight:700;margin-bottom:12px;color:var(--slate)}
-.gcanvas-wrap{overflow-x:auto}
-.gpanel canvas{max-width:100%}
-.gpanel.vacio{display:grid;place-items:center;min-height:240px;text-align:center;color:var(--gris);font-size:13px;padding:20px}
-
-.tabla-wrap{border:1px solid var(--gris-200);border-radius:10px;overflow:hidden;margin-bottom:14px}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{background:var(--slate);color:#fff;text-align:left;padding:9px 12px;font-size:11.5px}
-th.r,td.r{text-align:right}
-td{padding:8px 12px;border-bottom:1px solid var(--gris-200)}
-tbody tr:nth-child(even) td{background:#F8FAFB}
-.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-.pill.ok{background:#CCFBF1;color:#115E59}.pill.warn{background:var(--ambar-bg);color:#92400E}.pill.bad{background:var(--rojo-bg);color:#7F1D1D}
-
-.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:4px}
-.rcard{background:var(--blanco);border:1px solid var(--gris-200);border-radius:10px;padding:13px 14px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
-.rcard-nombre{font-size:12px;font-weight:700;color:var(--slate);margin-bottom:8px;line-height:1.35;min-height:32px}
-.rcard-nums{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-.rcard-total{font-size:11px;color:#64748B}
-.rcard-pct{font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:var(--teal)}
-.rcard-bar-bg{height:6px;background:var(--gris-200);border-radius:3px;overflow:hidden;margin-bottom:6px}
-.rcard-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--teal),var(--teal-h));transition:width .5s}
-.rcard-sub{font-size:10.5px;font-weight:600;color:#64748B}
-#resumenCards{margin-top:16px}
-.res-tit{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
-
-/* BARRA FIJA */
-.barra-fija{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);border-top:1px solid var(--gris-200);backdrop-filter:blur(8px);padding:12px 24px;z-index:50;display:none}
-.barra-fija>div{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.bf-txt{font-size:12.5px;color:#64748B}.bf-txt b{color:var(--slate)}
-
-/* NO COMPAT */
-#nocompat{display:none;min-height:70vh;place-items:center;text-align:center;padding:40px}
-#nocompat h2{font-family:'Sora',sans-serif;font-size:22px;margin:16px 0 10px}
-
-@media(max-width:760px){
-  .kpis{grid-template-columns:repeat(3,1fr)}
-  .graficos-grid{grid-template-columns:1fr}
-  header{padding:0 16px}
-  .hub,.dep{padding-left:18px;padding-right:18px}
-  .org{padding-left:18px;padding-right:18px}
-  .hub-hero{padding:30px 26px}
-  .hub-hero h1{font-size:26px}
-  .hub-hero .rings{display:none}
-  .tool-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
-}
-@media(max-width:560px){
-  header{padding:0 12px}
-  .hbar{gap:8px}
-  .carpetas,.confirm-grid{grid-template-columns:1fr}
-  .modos{flex-direction:column}
-  .kpis{grid-template-columns:repeat(2,1fr)}
-  .hub{padding:24px 14px 70px}
-  .dep,.org{padding:22px 14px 90px}
-  .hub-hero{padding:26px 20px;border-radius:16px}
-  .hub-hero h1{font-size:22px;line-height:1.15}
-  .hub-hero p{font-size:13.5px}
-  .hub-stats{gap:18px}
-  .hub-stat .n{font-size:20px}
-  .tool-grid{grid-template-columns:1fr;gap:14px}
-  .tool-card{min-height:0;padding:20px}
-  .card{padding:20px 16px}
-  .q-row{grid-template-columns:22px 1fr 54px 46px;gap:8px;padding:9px 11px}
-  .q-row .qn{font-size:12px}
-  .det-grid{grid-template-columns:1fr}
-}
-
-/* ══ DEPURADOR ══ */
-.dep{max-width:1440px;margin:0 auto;padding:30px 24px 90px}
-.det-panel{margin-top:16px}
-.det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
-.det-row{background:var(--gris-100);border:1px solid var(--gris-200);border-radius:9px;padding:9px 11px}
-.det-row .dl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;display:flex;align-items:center;gap:5px}
-.det-row .dl .dot{width:7px;height:7px;border-radius:50%;background:var(--gris)}
-.det-row.hit .dl .dot{background:var(--verde)}
-.det-row.key .dl{color:var(--teal)}
-.det-row select{width:100%;padding:6px 8px;border:1px solid var(--gris-200);border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--slate)}
-.dep-tabsbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-.q-list{display:flex;flex-direction:column;gap:8px}
-.q-row{display:grid;grid-template-columns:26px 1fr 90px 120px;align-items:center;gap:10px;background:var(--blanco);border:1px solid var(--gris-200);border-radius:9px;padding:9px 13px}
-.q-row .q-n{font-family:'Sora',sans-serif;font-size:11px;font-weight:700;color:var(--gris);text-align:right}
-.q-row .qn{font-size:12.5px;font-weight:600;color:var(--slate)}
-.q-bar{height:8px;background:var(--gris-200);border-radius:4px;overflow:hidden}
-.q-bar-fill{height:100%;border-radius:4px}
-.q-bar-fill.ok{background:var(--teal)}.q-bar-fill.warn{background:var(--ambar)}.q-bar-fill.bad{background:var(--rojo)}
-.q-pct{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;text-align:right}
-.q-pct.ok{color:var(--teal)}.q-pct.warn{color:var(--ambar)}.q-pct.bad{color:var(--rojo)}
-.maestro-box{background:var(--teal-bg);border:1px solid var(--teal-100);border-radius:10px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.maestro-box .mtxt{font-size:12.5px;color:#115E59;flex:1;min-width:200px}
-.maestro-box .mtxt b{display:block;font-size:13px;color:var(--slate);margin-bottom:2px}
-.dep-search{padding:7px 11px;border:1px solid var(--gris-200);border-radius:7px;font-size:12.5px;font-family:'DM Sans',sans-serif;width:240px;max-width:100%}
-.mini-note{font-size:11.5px;color:var(--gris);margin-top:8px}
-/* Cuadros resumen por dimensión — un cuadro por fila, espacioso */
-.dash-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--gris-100);border:1px solid var(--gris-200);border-radius:12px;padding:11px 16px;margin-bottom:16px}
-.dash-tools-l{font-size:12.5px;color:#64748B}.dash-tools-l b{color:var(--slate);font-family:'Sora',sans-serif}
-.dash-pal{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--slate)}
-.dash-pal select{padding:6px 10px;border:1px solid var(--gris-200);border-radius:7px;font-size:12.5px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--slate);cursor:pointer}
-.rk-head{display:grid;grid-template-columns:22px 11px 1fr auto;align-items:center;gap:5px 9px;padding:0 0 6px;border-bottom:1px solid var(--gris-200);margin-bottom:2px;font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em}
-/* KPIs hero + filtro cruzado */
-.hero-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-.hkpi{background:linear-gradient(150deg,#0F766E,#0D9488);color:#fff;border-radius:14px;padding:15px 17px;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(15,118,110,.16)}
-.hkpi:nth-child(2){background:linear-gradient(150deg,#0891B2,#0EA5E9)}
-.hkpi:nth-child(3){background:linear-gradient(150deg,#6366F1,#7C3AED)}
-.hkpi:nth-child(4){background:linear-gradient(150deg,#D97706,#F59E0B)}
-.hkpi:nth-child(5){background:linear-gradient(150deg,#DB2777,#F43F5E)}
-.hkpi-ic{font-size:19px;opacity:.92}
-.hkpi-n{font-family:'Sora',sans-serif;font-size:29px;font-weight:800;line-height:1.05;margin-top:3px}
-.hkpi-l{font-size:11.5px;font-weight:600;opacity:.92;margin-top:2px}
-.filtro-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:9px 12px;margin-bottom:14px}
-.filtro-lbl{font-size:12px;font-weight:700;color:#92400E}
-.filtro-chip{background:#fff;border:1px solid #FCD34D;border-radius:20px;padding:5px 11px;font-size:12px;color:#78350F;cursor:pointer;font-family:'DM Sans',sans-serif}
-.filtro-chip:hover{background:#FEF3C7}
-.filtro-clear{margin-left:auto;background:transparent;border:none;color:#92400E;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline}
-.rk-click{cursor:pointer;transition:background .12s}
-.rk-click:hover{background:var(--teal-bg)}
-.rk-activo{background:var(--teal-100)}
-.cuadros-wrap{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
-.cuadro-hero{grid-column:1 / -1}
-.cuadro-body-hero{display:grid;grid-template-columns:minmax(280px,400px) 1fr;gap:18px;align-items:start}
-.cuadro-hero-side{display:flex;flex-direction:column;gap:12px;min-width:0}
-.hero-badge{display:inline-block;vertical-align:middle;font-family:'DM Sans',sans-serif;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:linear-gradient(90deg,var(--teal),var(--teal-h));padding:2px 7px;border-radius:20px;margin-left:6px}
-.cuadro{position:relative;overflow:hidden;background:var(--blanco);border:1px solid var(--gris-200);border-radius:14px;padding:20px 20px 18px;box-shadow:0 1px 3px rgba(15,23,42,.04);transition:transform .18s,box-shadow .18s,border-color .18s}
-.cuadro::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--teal),var(--teal-h) 55%,#0891B2)}
-.cuadro:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(15,118,110,.12);border-color:var(--teal-100)}
-.cuadro-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.cuadro-ico{font-size:19px;line-height:1}
-.cuadro-titulo{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;color:var(--slate)}
-.cuadro-tot{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--gris)}
-.cuadro-insight{background:var(--teal-bg);border:1px solid var(--teal-100);border-radius:10px;padding:9px 13px;font-size:12.5px;color:#115E59;line-height:1.4}
-.cuadro-insight b{color:var(--slate)}
-.cuadro-tipo{margin-left:auto;padding:6px 10px;border:1px solid var(--gris-200);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;background:#fff;color:var(--slate);cursor:pointer}
-.cuadro-body{display:flex;flex-direction:column;gap:14px}
-.cuadro-graf-box{background:linear-gradient(160deg,#FBFDFE,#F3F8F9);border:1px solid var(--gris-200);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:center;min-height:300px}
-.cuadro-vacio-box{background:repeating-linear-gradient(45deg,#F8FAFB,#F8FAFB 10px,#F2F5F7 10px,#F2F5F7 20px)}
-.vacio-msg{text-align:center;color:#94A3B8;max-width:300px;padding:10px}
-.vacio-n{font-family:'Sora',sans-serif;font-size:46px;font-weight:800;color:#CBD5E1;line-height:1}
-.vacio-t{font-size:13px;font-weight:700;color:#64748B;margin:6px 0 8px}
-.vacio-hint{font-size:11.5px;line-height:1.45}.vacio-hint b{color:#475569}
-.cuadro-graf{position:relative;width:280px;height:280px;max-width:100%}
-.cuadro-graf canvas{max-width:100%;height:auto}
-.cuadro-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-.cuadro-center b{font-family:'Sora',sans-serif;font-size:30px;font-weight:800;color:var(--slate);line-height:1}
-.cuadro-center span{font-size:10px;color:var(--gris);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
-.cuadro-rank-box{background:#FAFBFC;border:1px solid var(--gris-200);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:9px;min-width:0}
-.rank-tit{font-size:10.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
-.rk-row{display:grid;grid-template-columns:22px 11px 1fr auto;grid-template-areas:"n sw name val" ". bar bar bar";align-items:center;gap:5px 9px}
-.rk-n{grid-area:n;font-family:'Sora',sans-serif;font-size:12px;font-weight:700;color:var(--gris);text-align:right}
-.rk-sw{grid-area:sw;width:11px;height:11px;border-radius:3px}
-.rk-name{grid-area:name;font-size:12.5px;color:var(--slate);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rk-val{grid-area:val;font-size:12px;font-weight:700;color:var(--slate);white-space:nowrap}
-.rk-val em{font-style:normal;color:var(--gris);font-weight:600;font-size:10.5px}
-.rk-bar{grid-area:bar;height:5px;background:var(--gris-200);border-radius:3px;overflow:hidden}
-.rk-bar i{display:block;height:100%;border-radius:3px}
-.rk-more{font-size:11px;color:var(--gris);padding-left:31px;margin-top:2px}
-@media(max-width:1000px){.cuadros-wrap{grid-template-columns:1fr}}
-@media(max-width:760px){.cuadro-graf{width:240px;height:240px;margin:0 auto}.cuadro-body-hero{grid-template-columns:1fr}}
-/* ══ REVISIÓN DEL CATÁLOGO (modal) ══ */
-.cat-modal{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px}
-.cat-modal[hidden]{display:none}
-.cat-dialog{background:#fff;border-radius:22px;width:min(1180px,100%);height:min(92vh,980px);display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(30,41,59,.25);overflow:hidden}
-.cat-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 26px 12px}
-.cat-eyebrow{font-family:'Sora',sans-serif;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin-bottom:6px}
-.cat-head h2{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;color:var(--slate);letter-spacing:-.01em}
-.cat-sub{font-size:13.5px;color:#64748B;margin-top:4px}
-.cat-x{background:transparent;border:1px solid var(--gris-200);color:#64748B;width:38px;height:38px;border-radius:10px;font-size:20px;padding:0;line-height:1}
-.cat-x:hover{border-color:var(--teal);color:var(--teal)}
-.cat-prog{padding:4px 26px 16px}
-.cat-prog-txt{font-size:12.5px;color:#64748B;margin-top:6px;font-variant-numeric:tabular-nums}
-.cat-resumen{display:flex;gap:10px;flex-wrap:wrap;padding:0 26px 12px}
-.cat-chip{display:flex;align-items:center;gap:8px;border-radius:100px;padding:7px 14px;font-size:12.5px;font-weight:600}
-.cat-chip b{font-family:'Sora',sans-serif;font-size:14px}
-.cat-chip.ok{background:#F0FDFA;color:#115E59}.cat-chip.med{background:#FEF9C3;color:#854D0E}.cat-chip.rev{background:#FEF3C7;color:#92400E}
-.cat-filtros{display:flex;gap:6px;padding:0 26px 12px;border-bottom:1px solid var(--gris-200)}
-.cat-fil{background:var(--gris-100);color:#475569;font-size:12.5px;padding:7px 14px;border-radius:100px}
-.cat-fil.activo{background:var(--teal);color:#fff}
-.cat-grid{flex:1;overflow:auto;padding:16px 26px;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-content:start;background:#F8FAFB}
-.cat-card{background:#fff;border:1px solid rgba(15,118,110,.12);border-radius:14px;padding:12px 12px 14px}
-.cat-card.hecho{border-color:var(--teal)}
-.cat-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
-.cat-cod{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--slate)}
-.cat-badge{font-size:10.5px;font-weight:700;border-radius:100px;padding:3px 9px;white-space:nowrap}
-.cat-badge.codigo{background:#CCFBF1;color:#115E59}.cat-badge.imagen{background:#FEF9C3;color:#854D0E}.cat-badge.revisar{background:#FEF3C7;color:#92400E}.cat-badge.manual{background:var(--teal);color:#fff}
-.cat-desc{font-size:12px;color:#64748B;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cat-fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.cat-foto{position:relative;padding:0;border:2px solid transparent;border-radius:10px;background:#EEF2F6;aspect-ratio:3/4;overflow:hidden;cursor:pointer}
-.cat-foto img{width:100%;height:100%;object-fit:cover;display:block}
-.cat-foto:hover{border-color:var(--teal-h)}
-.cat-foto.sel{border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,118,110,.25)}
-.cat-foto .tag{position:absolute;left:6px;bottom:6px;margin:0;border:none;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;background:rgba(15,23,42,.72);color:#fff}
-.cat-foto.sel .tag-p{background:var(--teal)}
-.cat-foto:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(15,118,110,.45)}
-.cat-mas{grid-column:1/-1;justify-self:center}
-.cat-vacio{grid-column:1/-1;text-align:center;color:#64748B;padding:40px 10px;font-size:14px}
-.cat-foot{display:flex;align-items:center;gap:10px;padding:14px 26px;border-top:1px solid var(--gris-200);background:#fff}
-.cat-nota{font-size:12.5px;color:#64748B;margin-right:auto}
-@media(max-width:640px){.cat-modal{padding:0}.cat-dialog{height:100vh;border-radius:0}.cat-grid{grid-template-columns:1fr}}
-</style>
+<title>NEXOVA Suite · Plataforma de inventarios de activos fijos</title>
+<meta name="description" content="NEXOVA Suite: organizador fotográfico y depurador de bases para inventarios de activos fijos. Todo se procesa en su PC.">
+<meta name="theme-color" content="#0F766E">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/sora-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/dm-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<header>
-  <div class="hbar">
-    <button class="h-back" id="hBack">‹ Herramientas</button>
-    <svg class="logo" viewBox="0 0 330 80" role="img" aria-label="NEXOVA Software Empresarial">
-      <g transform="translate(0,8)">
-        <polygon points="32,2 56,16 56,48 32,62 8,48 8,16" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.55"/>
-        <circle cx="32" cy="2" r="3" fill="#FFFFFF" fill-opacity="0.9"/>
-        <circle cx="56" cy="16" r="3" fill="#2DD4BF"/>
-        <circle cx="56" cy="48" r="3" fill="#FFFFFF" fill-opacity="0.9"/>
-        <circle cx="32" cy="62" r="3" fill="#2DD4BF"/>
-        <circle cx="8" cy="48" r="3" fill="#FFFFFF" fill-opacity="0.9"/>
-        <circle cx="8" cy="16" r="3" fill="#2DD4BF"/>
-        <line x1="22" y1="48" x2="22" y2="22" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
-        <line x1="22" y1="22" x2="42" y2="48" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
-        <line x1="42" y1="22" x2="42" y2="48" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
-      </g>
-      <text x="86" y="46" font-family="Sora, system-ui, sans-serif" font-size="32" font-weight="800" fill="#FFFFFF" letter-spacing="5">NEXOVA</text>
-      <text x="88" y="62" font-family="Sora, system-ui, sans-serif" font-size="9" font-weight="600" fill="#94A3B8" letter-spacing="3.5">SOFTWARE EMPRESARIAL</text>
-    </svg>
-    <span class="h-tool" id="hTool"></span>
-    <span class="priv"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Sus archivos no salen de su PC</span>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<header class="nav" id="nav">
+  <div class="nav-in">
+    <button class="brand" id="hHome" aria-label="NEXOVA Suite · ir al inicio">
+      <svg viewBox="0 0 330 80" role="img" aria-hidden="true">
+        <g transform="translate(0,8)">
+          <polygon points="32,2 56,16 56,48 32,62 8,48 8,16" fill="#0F766E" fill-opacity="0.06" stroke="#0F766E" stroke-width="2"/>
+          <circle cx="32" cy="2" r="3" fill="#0F766E"/><circle cx="56" cy="16" r="3" fill="#0D9488"/>
+          <circle cx="56" cy="48" r="3" fill="#0F766E"/><circle cx="32" cy="62" r="3" fill="#0D9488"/>
+          <circle cx="8" cy="48" r="3" fill="#0F766E"/><circle cx="8" cy="16" r="3" fill="#0D9488"/>
+          <line x1="22" y1="48" x2="22" y2="22" stroke="#0F766E" stroke-width="2.6" stroke-linecap="round"/>
+          <line x1="22" y1="22" x2="42" y2="48" stroke="#0F766E" stroke-width="2.6" stroke-linecap="round"/>
+          <line x1="42" y1="22" x2="42" y2="48" stroke="#0F766E" stroke-width="2.6" stroke-linecap="round"/>
+        </g>
+        <text x="86" y="46" font-family="Sora, system-ui, sans-serif" font-size="32" font-weight="800" fill="#1E293B" letter-spacing="5">NEXOVA</text>
+        <text x="88" y="62" font-family="Sora, system-ui, sans-serif" font-size="9" font-weight="600" fill="#64748B" letter-spacing="3.5">SOFTWARE EMPRESARIAL</text>
+      </svg>
+    </button>
+    <nav class="crumbs" id="crumbs" aria-label="Ruta" hidden>
+      <button class="crumb-link" id="hBack"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg><span>Herramientas</span></button>
+      <span class="crumb-sep" aria-hidden="true">/</span>
+      <span class="crumb-actual" id="hTool" aria-current="page"></span>
+    </nav>
+    <span class="priv" title="El procesamiento es 100% local: ningún archivo se envía a servidores.">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Sus archivos no salen de su PC</span>
+    </span>
   </div>
 </header>
 
-<!-- ════════════════ VISTA HUB ════════════════ -->
-<div class="view visible" id="view-hub">
+<main id="contenido">
+
+<!-- ════════════════ HUB ════════════════ -->
+<section class="view visible" id="view-hub" aria-labelledby="hubTit">
   <div class="hub">
-    <div class="hub-hero">
-      <svg class="rings" width="220" height="220" viewBox="0 0 220 220" fill="none">
-        <circle cx="110" cy="110" r="60" stroke="#fff" stroke-width="1.2"/>
-        <circle cx="110" cy="110" r="88" stroke="#fff" stroke-width="1.2"/>
-        <circle cx="110" cy="110" r="108" stroke="#fff" stroke-width="1.2"/>
+    <div class="hero">
+      <svg class="hero-iso" viewBox="0 0 80 80" aria-hidden="true">
+        <polygon points="40,4 68,20 68,56 40,72 12,56 12,20" fill="none" stroke="#0F766E" stroke-width="1.6"/>
+        <polygon points="40,8 64,22 64,54 40,68 16,54 16,22" fill="#0F766E" fill-opacity="0.07"/>
+        <circle cx="40" cy="4" r="3" fill="#0F766E"/><circle cx="68" cy="20" r="3" fill="#0D9488"/>
+        <circle cx="68" cy="56" r="3" fill="#0F766E"/><circle cx="40" cy="72" r="3" fill="#0D9488"/>
+        <circle cx="12" cy="56" r="3" fill="#0F766E"/><circle cx="12" cy="20" r="3" fill="#0D9488"/>
+        <line x1="28" y1="56" x2="28" y2="26" stroke="#0F766E" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="28" y1="26" x2="52" y2="56" stroke="#0F766E" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="52" y1="26" x2="52" y2="56" stroke="#0F766E" stroke-width="2.6" stroke-linecap="round"/>
       </svg>
-      <div class="hub-eyebrow">NEXOVA · Software Empresarial</div>
-      <h1>Plataforma de gestión de inventarios de activos fijos</h1>
-      <p>Un solo lugar para tus herramientas de consultoría: organización fotográfica, depuración de datos, ejecución de proyectos y documentación automatizada.</p>
-      <div class="hub-stats">
-        <div class="hub-stat"><div class="n" id="stTools">6</div><div class="l">Herramientas</div></div>
-        <div class="hub-stat"><div class="n" id="stActive">1</div><div class="l">Disponibles hoy</div></div>
-        <div class="hub-stat"><div class="n">100%</div><div class="l">Procesado local</div></div>
+      <div class="eyebrow">NEXOVA Suite · Inventarios de activos fijos</div>
+      <h1 id="hubTit">Del levantamiento en campo al entregable, en <em>minutos</em>.</h1>
+      <p class="lead">Organice las fotografías por código de activo, depure la base operativa y genere reportes y catálogos listos para el cliente. Todo se procesa en su computadora.</p>
+      <div class="hero-stats">
+        <div class="hstat"><div class="n" id="stActive">2</div><div class="l">Herramientas disponibles</div></div>
+        <div class="hstat"><div class="n" id="stSoon">4</div><div class="l">En desarrollo</div></div>
+        <div class="hstat"><div class="n">100%</div><div class="l">Procesamiento local</div></div>
       </div>
     </div>
 
-    <div class="hub-sec">Herramientas</div>
+    <div class="sec-head"><h2>Disponibles</h2><span>Seleccione una herramienta para empezar</span></div>
     <div class="tool-grid" id="toolGrid"></div>
 
-    <div class="hub-foot">NEXOVA Software Empresarial · Lima, Perú · Ningún dato se transmite a servidores externos.</div>
+    <div class="sec-head sec-gap"><h2>En desarrollo</h2><span>Próximas incorporaciones a la suite</span></div>
+    <div class="tool-grid" id="toolGridSoon"></div>
   </div>
-</div>
+</section>
 
-<!-- ════════════════ VISTA ORGANIZADOR ════════════════ -->
-<div class="view" id="view-organizador">
+<!-- ════════════════ ORGANIZADOR ════════════════ -->
+<section class="view" id="view-organizador" aria-labelledby="orgTit">
 
   <div id="nocompat">
     <div>
-      <div style="font-size:48px">🖥️</div>
-      <h2>Necesitas Chrome o Edge</h2>
-      <p style="color:#64748B;margin-top:8px">El organizador accede a tus carpetas con la File System Access API,<br>disponible solo en Chrome o Edge de escritorio (y sobre HTTPS).</p>
+      <div class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/></svg></div>
+      <h2>Use Google Chrome o Microsoft Edge</h2>
+      <p>El organizador accede a sus carpetas con la File System Access API,<br>disponible solo en Chrome o Edge de escritorio.</p>
     </div>
   </div>
 
   <div class="org" id="orgApp">
-    <div class="wiz">
-      <div class="wstep activo" id="ws1"><div class="wnum">1</div><span>Inventario</span></div>
-      <div class="wline" id="wl1"></div>
-      <div class="wstep" id="ws2"><div class="wnum">2</div><span>Carpetas</span></div>
-      <div class="wline" id="wl2"></div>
-      <div class="wstep" id="ws3"><div class="wnum">3</div><span>Organizar</span></div>
-      <div class="wline" id="wl3"></div>
-      <div class="wstep" id="ws4"><div class="wnum">4</div><span>Dashboard</span></div>
+    <div class="tool-head">
+      <div>
+        <h1 id="orgTit">Organizador <em>fotográfico</em></h1>
+        <p>Empareje las fotos del levantamiento con el inventario y ordénelas por familia en carpetas, con reportes de conciliación y catálogo.</p>
+      </div>
     </div>
+
+    <ol class="wiz" aria-label="Pasos">
+      <li class="wstep activo" id="ws1"><div class="wnum">1</div><span>Inventario</span></li>
+      <li class="wline" id="wl1" aria-hidden="true"></li>
+      <li class="wstep" id="ws2"><div class="wnum">2</div><span>Carpetas</span></li>
+      <li class="wline" id="wl2" aria-hidden="true"></li>
+      <li class="wstep" id="ws3"><div class="wnum">3</div><span>Simular y ejecutar</span></li>
+      <li class="wline" id="wl3" aria-hidden="true"></li>
+      <li class="wstep" id="ws4"><div class="wnum">4</div><span>Resultados</span></li>
+    </ol>
 
     <!-- PASO 1 -->
     <div class="pantalla visible" id="p1">
       <div class="card">
-        <h2>Sube el inventario</h2>
-        <p>El Excel con los códigos de activos. Detecta automáticamente el código, familia, subfamilia, área, sede, estado y línea de producción.</p>
-        <div class="zona" id="zInv">
-          <div class="ic">📄</div>
-          <div class="zt">Haz clic o arrastra el Excel aquí</div>
-          <div class="zs">.xlsx · .xlsm · .xls · .csv</div>
+        <h2>Cargue el inventario</h2>
+        <p>El Excel con los códigos de los activos. Se detectan automáticamente el código, la familia, la subfamilia, el área, la sede, el estado y la línea de producción.</p>
+        <div class="zona" id="zInv" aria-describedby="zInvHint">
+          <div class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 15v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/></svg></div>
+          <div class="zt">Haga clic o arrastre el Excel aquí</div>
+          <div class="zs" id="zInvHint">.xlsx · .xlsm · .xls · .csv</div>
         </div>
-        <div class="drag-hint">💡 También puedes arrastrar el archivo directamente a esta área</div>
         <input type="file" id="fInv" accept=".xlsx,.xlsm,.xls,.csv" hidden>
-        <div id="inv-info" style="display:none;margin-top:14px">
-          <div style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Columnas detectadas</div>
+        <div id="inv-info" hidden>
+          <div class="lbl" style="margin-top:18px">Columnas detectadas</div>
           <div id="inv-resumen"></div>
         </div>
         <div class="btns">
-          <button class="b-pri" id="btn1" disabled onclick="irA(2)">Siguiente →</button>
+          <button class="b-pri" id="btn1" disabled>Siguiente <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </div>
       </div>
     </div>
@@ -449,29 +129,29 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
     <!-- PASO 2 -->
     <div class="pantalla" id="p2">
       <div class="card">
-        <h2>Elige las carpetas</h2>
-        <p>¿Dónde están las fotos y dónde quieres guardar el resultado organizado?</p>
+        <h2>Elija las carpetas</h2>
+        <p>Indique dónde están las fotos del levantamiento y dónde desea guardar el resultado organizado.</p>
         <div class="carpetas">
           <div>
-            <div class="clabel">📁 Carpeta de fotos (origen)</div>
+            <div class="lbl">Carpeta de fotos (origen)</div>
             <div class="zona" id="zOrigen">
-              <div class="ic">📁</div>
+              <div class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg></div>
               <div class="zt">Elegir carpeta de fotos</div>
               <div class="zs">Donde están las fotos del campo</div>
             </div>
           </div>
           <div>
-            <div class="clabel">📂 Carpeta destino (resultado)</div>
+            <div class="lbl">Carpeta destino (resultado)</div>
             <div class="zona" id="zDestino">
-              <div class="ic">📂</div>
+              <div class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M12 10.5v5M9.5 13l2.5 2.5 2.5-2.5"/></svg></div>
               <div class="zt">Elegir carpeta destino</div>
-              <div class="zs">Carpeta vacía donde se organizarán</div>
+              <div class="zs">De preferencia, una carpeta vacía</div>
             </div>
           </div>
         </div>
         <div class="btns">
-          <button class="b-sec" onclick="irA(1)">← Atrás</button>
-          <button class="b-pri" id="btn2" disabled onclick="irA(3);mostrarConfirmacion()">Siguiente →</button>
+          <button class="b-ghost" id="btn2Atras">Atrás</button>
+          <button class="b-pri" id="btn2" disabled>Siguiente <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </div>
       </div>
     </div>
@@ -479,58 +159,64 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
     <!-- PASO 3 -->
     <div class="pantalla" id="p3">
       <div class="card">
-        <h2>Listo para organizar</h2>
-        <p>Revisa el resumen y elige cómo manejar los archivos originales.</p>
+        <h2>Simule y ejecute</h2>
+        <p>Primero se simula: verá el resultado completo sin tocar ningún archivo. Si todo está correcto, ejecute.</p>
         <div class="confirm-grid" id="confirmGrid"></div>
-        <div class="clabel" style="margin-bottom:8px">¿Qué hacer con los archivos originales?</div>
-        <div class="modos" id="modos">
-          <div class="modo sel" data-v="copiar"><b>Copiar</b><span>Originales intactos · más seguro · recomendado</span></div>
-          <div class="modo" data-v="mover"><b>Mover</b><span>Más rápido con miles de fotos</span></div>
-        </div>
-        <button class="b-grande" id="btnSimular">👁 Simular primero (sin tocar archivos)</button>
-        <div style="text-align:center;font-size:12px;color:var(--gris);margin-top:6px">Ver el resultado antes de ejecutar de verdad</div>
+        <fieldset class="modos" id="modos">
+          <legend class="lbl">¿Qué hacer con los archivos originales?</legend>
+          <label class="modo"><input type="radio" name="modo" value="copiar" checked><b>Copiar</b><span>Los originales quedan intactos · recomendado</span></label>
+          <label class="modo"><input type="radio" name="modo" value="mover"><b>Mover</b><span>Más rápido con miles de fotos</span></label>
+        </fieldset>
+        <button class="b-grande" id="btnSimular"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>Simular primero (sin tocar archivos)</button>
 
-        <div class="prog-wrap" id="progWrap">
+        <div class="prog-wrap" id="progWrap" role="status" aria-live="polite">
           <div class="prog-header">
             <div class="prog-txt" id="progTxt">Procesando…</div>
             <div class="prog-tiempo" id="progTiempo">00:00</div>
           </div>
           <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
         </div>
-
-        <div class="completado" id="completado">
-          <span>🎉</span><div id="completado-msg"></div>
-        </div>
-        <div class="logbox" id="logbox"></div>
+        <details class="logdet" id="logDet" hidden>
+          <summary>Registro del proceso</summary>
+          <div class="logbox" id="logbox"></div>
+        </details>
 
         <div class="btns">
-          <button class="b-sec" onclick="irA(2)">← Atrás</button>
-          <button class="b-pri" id="btnEjecutar" disabled>⚡ Ejecutar de verdad</button>
+          <button class="b-ghost" id="btn3Atras">Atrás</button>
+          <button class="b-pri" id="btnEjecutar" disabled><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg>Ejecutar</button>
         </div>
       </div>
     </div>
 
     <!-- PASO 4 -->
     <div class="pantalla" id="p4">
+      <div id="bannerRes"></div>
       <div class="card">
         <div class="dash-header">
-          <h2 id="tituloRes">Dashboard del inventario</h2>
-          <div class="desc-btns">
-            <button class="b-desc teal" id="btnResumenDim">⬇ Resumen dimensión</button>
-            <button class="b-desc teal" id="btnAnalisisXls">⬇ Análisis Excel</button>
-            <button class="b-desc teal" id="btnAnalisisPdf">⬇ Análisis PDF</button>
-            <button class="b-desc" id="btnExcel">⬇ Conciliación</button>
-            <button class="b-desc" id="btnPDF">⬇ Informe cobertura PDF</button>
-            <button class="b-desc teal" id="btnCatalogoPpt">⬇ Catálogo PPT</button>
+          <h2 id="tituloRes">Resultados del inventario</h2>
+          <div class="dash-acciones">
+            <div class="menu">
+              <button class="b-sec" id="btnDescargas"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v11M7.5 11l4.5 4.5 4.5-4.5"/><path d="M4.5 15v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/></svg>Descargar entregables<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+              <div class="menu-pop" id="menuDescargas" role="menu" hidden>
+                <div class="menu-grupo">Conciliación</div>
+                <button class="menu-item" role="menuitem" id="btnExcel"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M9.5 12l5 5M14.5 12l-5 5"/></svg><span>Conciliación (Excel)<small>Foto por foto: activo, carpeta y método de emparejamiento</small></span></button>
+                <button class="menu-item" role="menuitem" id="btnPDF"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M8.5 16.5v-4h1.5a1.25 1.25 0 0 1 0 2.5H8.5"/></svg><span>Informe de cobertura (PDF)<small>Cobertura fotográfica por familia</small></span></button>
+                <div class="menu-grupo">Análisis por dimensión</div>
+                <button class="menu-item" role="menuitem" id="btnAnalisisXls"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M9.5 12l5 5M14.5 12l-5 5"/></svg><span>Análisis completo (Excel)<small>Todas las dimensiones, una hoja por cada una</small></span></button>
+                <button class="menu-item" role="menuitem" id="btnAnalisisPdf"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M8.5 16.5v-4h1.5a1.25 1.25 0 0 1 0 2.5H8.5"/></svg><span>Análisis completo (PDF)<small>Gráficos, tablas y cuadros resumen</small></span></button>
+                <button class="menu-item" role="menuitem" id="btnResumenDim"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M9 13h6M9 16.5h4"/></svg><span>Dimensión seleccionada (Excel)<small id="menuDimTxt">Solo la pestaña activa</small></span></button>
+              </div>
+            </div>
+            <button class="b-pri" id="btnCatalogoPpt"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/><path d="M7.5 12.5 10.5 9.5l2.5 2.5 3.5-3.5"/></svg>Catálogo fotográfico (PPT)</button>
           </div>
         </div>
         <div id="avisos"></div>
         <div class="kpis" id="kpis"></div>
 
         <div class="dim-controls">
-          <label>Activos por:</label>
-          <div class="dtabs" id="dimTabs"></div>
-          <label style="margin-left:auto">Gráfico:</label>
+          <label id="dimLbl">Activos por:</label>
+          <div class="dtabs" id="dimTabs" role="tablist" aria-labelledby="dimLbl"></div>
+          <label for="selGrafico" style="margin-left:auto">Gráfico:</label>
           <select id="selGrafico">
             <option value="barrasH">Barras horizontales</option>
             <option value="barrasV">Barras verticales</option>
@@ -541,11 +227,11 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
         <div class="graficos-grid">
           <div class="gpanel">
             <div class="gtitle">Cobertura fotográfica (global)</div>
-            <div class="gcanvas-wrap"><canvas id="gDona" width="288" height="240"></canvas></div>
+            <div class="gcanvas-wrap"><canvas id="gDona" width="288" height="240" role="img" aria-label="Cobertura fotográfica global"></canvas></div>
           </div>
           <div class="gpanel" id="panelPrincipal">
             <div class="gtitle" id="gPrincipalTit">Activos por dimensión</div>
-            <div class="gcanvas-wrap"><canvas id="gPrincipal" width="620" height="300"></canvas></div>
+            <div class="gcanvas-wrap"><canvas id="gPrincipal" width="620" height="300" role="img" aria-label="Activos por dimensión"></canvas></div>
           </div>
         </div>
 
@@ -561,8 +247,8 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
 
         <div id="resumenCards"></div>
 
-        <div style="margin-top:16px;text-align:center">
-          <button class="b-sec" onclick="irA(3)" style="font-size:12.5px">← Volver a organizar</button>
+        <div class="btns" style="justify-content:center">
+          <button class="b-ghost b-sm" id="btnVolverOrg">Volver a simular y ejecutar</button>
         </div>
       </div>
     </div>
@@ -570,70 +256,96 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
 
   <div class="barra-fija" id="barraFija">
     <div>
-      <div class="bf-txt">Simulación lista · <b id="bfResumen"></b></div>
-      <button class="b-pri" id="btnEjecutarBarra">⚡ Ejecutar de verdad</button>
+      <div class="bf-txt"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Vista previa · <b id="bfResumen"></b> · aún no se ha copiado ningún archivo</span></div>
+      <button class="b-pri" id="btnEjecutarBarra"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg>Ejecutar ahora</button>
     </div>
   </div>
-</div>
+</section>
 
-<!-- ════════════════ VISTA DEPURADOR DE BASES ════════════════ -->
-<div class="view" id="view-depurador">
+<!-- ════════════════ DEPURADOR DE BASES ════════════════ -->
+<section class="view" id="view-depurador" aria-labelledby="depH">
   <div class="dep">
+    <div class="tool-head">
+      <div>
+        <h1 id="depH">Depurador de <em>bases</em></h1>
+        <p>Normalice la base operativa, mida la calidad de los datos y valide marcas y modelos. Exporte el inventario depurado y el dashboard.</p>
+      </div>
+    </div>
 
     <!-- Carga + detección -->
     <div id="depUpload">
       <div class="card">
-        <h2>Depurador de Bases</h2>
-        <p>Sube la base operativa (Excel/CSV). Detecto y normalizo las columnas, evalúo la calidad de los datos y valido marcas/modelos contra un maestro.</p>
+        <h2>Cargue la base operativa</h2>
+        <p>Excel o CSV. Se detectan y normalizan las columnas, se evalúa la calidad de los datos y se validan marcas y modelos contra un maestro.</p>
         <div class="zona" id="depZona">
-          <div class="ic">🧹</div>
-          <div class="zt">Haz clic o arrastra el Excel aquí</div>
+          <div class="ic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 15v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/></svg></div>
+          <div class="zt">Haga clic o arrastre el Excel aquí</div>
           <div class="zs">.xlsx · .xlsm · .xls · .csv</div>
         </div>
-        <div class="drag-hint">💡 También puedes arrastrar el archivo directamente a esta área</div>
         <input type="file" id="depFile" accept=".xlsx,.xlsm,.xls,.csv" hidden>
 
-        <div class="det-panel" id="depDetect" style="display:none">
-          <div style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">
-            Columnas detectadas — corrige si algo quedó mal
-          </div>
-          <div class="det-grid" id="depDetGrid"></div>
+        <div class="det-panel" id="depDetect" hidden>
+          <div class="det-res" id="depDetRes"></div>
+          <div id="depDetGrid"></div>
           <div id="depDetAviso"></div>
           <div class="btns">
-            <button class="b-pri" id="depProcesar" disabled>Procesar y depurar →</button>
+            <button class="b-pri" id="depProcesar" disabled>Procesar y depurar <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Dashboard -->
-    <div id="depDash" style="display:none">
+    <div id="depDash" hidden>
       <div class="card">
         <div class="dash-header">
           <h2 id="depTitulo">Base depurada</h2>
-          <div class="desc-btns">
-            <button class="b-desc teal" id="depXlsClean">⬇ Excel depurado</button>
-            <button class="b-desc teal" id="depXlsCalidad">⬇ Excel calidad</button>
-            <button class="b-desc teal" id="depXlsDash">⬇ Excel dashboard</button>
-            <button class="b-desc" id="depWordDash">⬇ Word dashboard</button>
-            <button class="b-desc" id="depPdf">⬇ Informe PDF</button>
-            <button class="b-desc" id="depReset">↻ Otra base</button>
+          <div class="dash-acciones">
+            <div class="menu">
+              <button class="b-sec" id="depBtnDescargas"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v11M7.5 11l4.5 4.5 4.5-4.5"/><path d="M4.5 15v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/></svg>Descargar entregables<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+              <div class="menu-pop" id="depMenuDescargas" role="menu" hidden>
+                <div class="menu-grupo">Inventario</div>
+                <button class="menu-item" role="menuitem" id="depXlsClean"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M9.5 12l5 5M14.5 12l-5 5"/></svg><span>Inventario depurado (Excel)<small>Formato del entregable, en mayúsculas y con numeración</small></span></button>
+                <button class="menu-item" role="menuitem" id="depXlsCalidad"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M9.5 12l5 5M14.5 12l-5 5"/></svg><span>Calidad de datos (Excel)<small>Completitud por campo y duplicados</small></span></button>
+                <div class="menu-grupo">Dashboard</div>
+                <button class="menu-item" role="menuitem" id="depXlsDash"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M9.5 12l5 5M14.5 12l-5 5"/></svg><span>Dashboard (Excel)<small>Cuadros resumen con gráficos</small></span></button>
+                <button class="menu-item" role="menuitem" id="depWordDash"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M8.5 12l1.2 5 1.8-4 1.8 4 1.2-5"/></svg><span>Dashboard (Word)<small>Para insertar en el informe</small></span></button>
+                <button class="menu-item" role="menuitem" id="depPdf"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/><path d="M8.5 16.5v-4h1.5a1.25 1.25 0 0 1 0 2.5H8.5"/></svg><span>Informe (PDF)<small>KPIs, calidad y cuadros por dimensión</small></span></button>
+              </div>
+            </div>
+            <button class="b-ghost" id="depReset"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>Otra base</button>
           </div>
         </div>
         <div class="kpis" id="depKpis"></div>
-        <div class="dep-tabsbar" id="depTabs"></div>
+        <div class="dep-tabsbar" id="depTabs" role="tablist"></div>
         <div id="depPanel"></div>
       </div>
     </div>
-
   </div>
-</div>
+</section>
 
-<script src="vendor/xlsx.full.min.js"></script>
-<script src="vendor/exceljs.min.js"></script>
-<script src="vendor/jspdf.umd.min.js"></script>
-<script src="vendor/jspdf.plugin.autotable.min.js"></script>
-<script src="vendor/chart.umd.js"></script>
+</main>
+
+<footer class="foot">
+  <div class="foot-in">
+    <svg viewBox="0 0 330 80" aria-label="NEXOVA Software Empresarial" role="img">
+      <g transform="translate(0,8)">
+        <polygon points="32,2 56,16 56,48 32,62 8,48 8,16" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.55"/>
+        <circle cx="32" cy="2" r="3" fill="#fff"/><circle cx="56" cy="16" r="3" fill="#2DD4BF"/>
+        <circle cx="56" cy="48" r="3" fill="#fff"/><circle cx="32" cy="62" r="3" fill="#2DD4BF"/>
+        <circle cx="8" cy="48" r="3" fill="#fff"/><circle cx="8" cy="16" r="3" fill="#2DD4BF"/>
+        <line x1="22" y1="48" x2="22" y2="22" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="22" y1="22" x2="42" y2="48" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="42" y1="22" x2="42" y2="48" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+      </g>
+      <text x="86" y="46" font-family="Sora, system-ui, sans-serif" font-size="32" font-weight="800" fill="#fff" letter-spacing="5">NEXOVA</text>
+      <text x="88" y="62" font-family="Sora, system-ui, sans-serif" font-size="9" font-weight="600" fill="#94A3B8" letter-spacing="3.5">SOFTWARE EMPRESARIAL</text>
+    </svg>
+    <span>Lima, Perú</span><span class="sep">·</span><span>Ningún dato se transmite a servidores externos</span>
+    <span class="der">NEXOVA Suite</span>
+  </div>
+</footer>
+
 <!-- ════════════════ REVISIÓN DEL CATÁLOGO PPT ════════════════ -->
 <div class="cat-modal" id="catModal" hidden>
   <div class="cat-dialog" role="dialog" aria-modal="true" aria-labelledby="catTit">
@@ -643,11 +355,11 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
         <h2 id="catTit">Foto principal de cada activo</h2>
         <p class="cat-sub" id="catSub">Analizando las fotografías…</p>
       </div>
-      <button class="cat-x" id="catCerrar" aria-label="Cerrar">&times;</button>
+      <button class="cat-x" id="catCerrar" aria-label="Cerrar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="cat-prog" id="catProg">
       <div class="prog-bar"><div class="prog-fill" id="catProgFill"></div></div>
-      <div class="cat-prog-txt" id="catProgTxt"></div>
+      <div class="cat-prog-txt" id="catProgTxt" role="status" aria-live="polite"></div>
     </div>
     <div class="cat-resumen" id="catResumen" hidden></div>
     <div class="cat-filtros" id="catFiltros" hidden>
@@ -657,12 +369,17 @@ tbody tr:nth-child(even) td{background:#F8FAFB}
     <div class="cat-grid" id="catGrid"></div>
     <div class="cat-foot">
       <span class="cat-nota">Haga clic en la foto que debe ir como principal. Las demás se muestran como miniaturas.</span>
-      <button class="b-sec" id="catCancelar">Cancelar</button>
+      <button class="b-ghost" id="catCancelar">Cancelar</button>
       <button class="b-pri" id="catGenerar" disabled>Generar catálogo PPT</button>
     </div>
   </div>
 </div>
 
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/exceljs.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="vendor/chart.umd.js"></script>
 <script src="vendor/pptxgen.bundle.js"></script>
 <script src="vendor/zxing.min.js"></script>
 <script type="module" src="js/app2.js"></script>

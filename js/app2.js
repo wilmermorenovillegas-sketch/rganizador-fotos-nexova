@@ -27,12 +27,7 @@ import { soportado, pedirCarpeta, escanearFotos, ejecutarPlan, guardarEnDestino 
 import { generarExcel, generarPDF, graficoEstado, graficoCobertura } from './reportes.js';
 import { Depurador } from './depurador.js';
 import { generarCatalogoPPT, analizarCatalogo } from './catalogo.js';
-
-// ── Helpers cortos ──────────────────────────────────────────
-const $ = (id) => document.getElementById(id);
-const num = (n) => (+n || 0).toLocaleString('es-PE');
-const pct = (n) => (+n || 0).toFixed(1) + '%';
-const esc = (t) => String(t ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
+import { $, num, pct, esc, icono, toast, confirmar, descargar, zonaArchivo, zonaLista, menu } from './shared/ui.js';
 
 const TEAL = '#0F766E';
 const PALETA = ['#0F766E', '#14B8A6', '#0D9488', '#2DD4BF', '#0891B2', '#0EA5E9',
@@ -73,52 +68,49 @@ const detectarColsOrg = (headers) => detectarColumnas(headers, CAMPOS_ORG);
 // ════════════════════════════════════════════════════════════
 // HUB — pantalla de inicio con las herramientas de la suite
 // ════════════════════════════════════════════════════════════
-const IC = {
-  camara:  '<rect x="3" y="6.5" width="18" height="13" rx="2.5"/><circle cx="12" cy="13" r="3.6"/><path d="M8.5 6.5 10 4h4l1.5 2.5"/>',
-  datos:   '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6"/><path d="M4.5 11.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6"/>',
-  proyecto:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.5h6a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M8.5 13l2 2 4-4.2"/>',
-  entrega: '<path d="M9 3.5h5l4 4V17a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2z"/><path d="M14 3.5V8h4"/><path d="M6 7.5V19a2.5 2.5 0 0 0 2.5 2.5H16"/>',
-  correo:  '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.5 7l8.5 5.5L20.5 7"/>',
-  formato: '<rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/>',
-};
 const TOOLS = [
-  { id: 'organizador', on: true,  icon: IC.camara,   name: 'Organizador Fotográfico',
-    desc: 'Empareja y clasifica las fotos del inventario por código de activo, con dashboard y reportes.' },
-  { id: 'depurador',   on: true,  icon: IC.datos,    name: 'Depurador y análisis de bases de inventario',
-    desc: 'Limpia y normaliza bases operativas, evalúa calidad de datos y valida marcas/modelos.' },
-  { id: 'proyectos',   on: false, icon: IC.proyecto, name: 'Formato de "Diagnóstico de la base contable"',
-    desc: 'Planifica y ejecuta los proyectos de levantamiento de activos en campo.' },
-  { id: 'entregables', on: false, icon: IC.entrega,  name: 'Generador de Entregables',
+  { id: 'organizador', on: true,  icon: 'camara',   name: 'Organizador fotográfico',
+    desc: 'Empareja las fotos del levantamiento con el inventario por código de activo, las ordena por familia y genera la conciliación, el dashboard y el catálogo en PowerPoint.' },
+  { id: 'depurador',   on: true,  icon: 'datos',    name: 'Depurador y análisis de bases',
+    desc: 'Normaliza la base operativa, mide la calidad de los datos, valida marcas y modelos y entrega el inventario depurado con su dashboard.' },
+  { id: 'proyectos',   on: false, icon: 'proyecto', name: 'Diagnóstico de la base contable',
+    desc: 'Genera el formato de diagnóstico de la base contable de activos fijos.' },
+  { id: 'entregables', on: false, icon: 'entrega',  name: 'Generador de entregables',
     desc: 'Produce la documentación y los entregables del proyecto de forma automatizada.' },
-  { id: 'correos',     on: false, icon: IC.correo,   name: 'Asistente de Correos',
-    desc: 'Redacta y potencia correos profesionales para la comunicación con el cliente.' },
-  { id: 'formatos',    on: false, icon: IC.formato,  name: 'Generador de Formatos',
-    desc: 'Crea formatos y requerimientos estandarizados de manera automatizada.' },
+  { id: 'correos',     on: false, icon: 'correo',   name: 'Asistente de correos',
+    desc: 'Redacta correos profesionales para la comunicación con el cliente.' },
+  { id: 'formatos',    on: false, icon: 'formato',  name: 'Generador de formatos',
+    desc: 'Crea formatos y requerimientos estandarizados.' },
 ];
 
 function pintarHub() {
-  const flecha = '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-  $('toolGrid').innerHTML = TOOLS.map((t) => `
-    <div class="tool-card ${t.on ? 'activa' : 'soon'}" ${t.on ? `onclick="abrirHerramienta('${t.id}')"` : ''}>
-      <div class="tool-icon"><svg viewBox="0 0 24 24">${t.icon}</svg></div>
-      <div class="tool-title">${t.name}</div>
-      <div class="tool-desc">${t.desc}</div>
-      <div class="tool-foot">
-        ${t.on ? '<span class="chip on">Disponible</span>' : '<span class="chip soon">Próximamente</span>'}
-        ${t.on ? `<span class="tool-open">Abrir ${flecha}</span>` : ''}
-      </div>
+  const activas = TOOLS.filter((t) => t.on), proximas = TOOLS.filter((t) => !t.on);
+  $('toolGrid').innerHTML = activas.map((t) => `
+    <button class="tool-card" data-tool="${t.id}">
+      <div class="tool-icon">${icono(t.icon)}</div>
+      <div class="tool-title">${esc(t.name)}</div>
+      <div class="tool-desc">${esc(t.desc)}</div>
+      <div class="tool-foot"><span class="chip on">Disponible</span><span class="tool-open">Abrir ${icono('flecha')}</span></div>
+    </button>`).join('');
+  $('toolGridSoon').innerHTML = proximas.map((t) => `
+    <div class="tool-card soon">
+      <div class="tool-icon">${icono(t.icon)}</div>
+      <div class="tool-title">${esc(t.name)}</div>
+      <div class="tool-desc">${esc(t.desc)}</div>
+      <div class="tool-foot"><span class="chip soon">Próximamente</span></div>
     </div>`).join('');
-  $('stTools').textContent = TOOLS.length;
-  $('stActive').textContent = TOOLS.filter((t) => t.on).length;
+  $('stActive').textContent = activas.length;
+  $('stSoon').textContent = proximas.length;
+  $('toolGrid').onclick = (e) => { const b = e.target.closest('[data-tool]'); if (b) abrirHerramienta(b.dataset.tool); };
 }
 
 function abrirHerramienta(id) {
   const tool = TOOLS.find((t) => t.id === id);
   if (!tool || !tool.on) return;
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('visible'));
-  $('hBack').style.display = 'flex';
-  $('hTool').style.display = 'inline';
+  $('crumbs').hidden = false;
   $('hTool').textContent = tool.name;
+  document.title = `${tool.name} · NEXOVA Suite`;
 
   if (id === 'organizador') {
     $('view-organizador').classList.add('visible');
@@ -134,12 +126,10 @@ function abrirHerramienta(id) {
 function volverHub() {
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('visible'));
   $('view-hub').classList.add('visible');
-  $('hBack').style.display = 'none';
-  $('hTool').style.display = 'none';
+  $('crumbs').hidden = true;
+  document.title = 'NEXOVA Suite · Plataforma de inventarios de activos fijos';
   window.scrollTo({ top: 0 });
 }
-window.abrirHerramienta = abrirHerramienta;
-window.volverHub = volverHub;
 
 // ════════════════════════════════════════════════════════════
 // ARRANQUE
@@ -151,24 +141,28 @@ window.requestAnimationFrame = (cb) => (document.hidden ? setTimeout(() => cb(pe
 
 pintarHub();
 $('hBack').onclick = volverHub;
+$('hHome').onclick = volverHub;
+addEventListener('scroll', () => $('nav').classList.toggle('scrolled', scrollY > 8), { passive: true });
 iniciarOrganizador();
 
 function iniciarOrganizador() {
-  $('zInv').onclick = () => $('fInv').click();
+  zonaArchivo('zInv', (f) => cargarExcel(f), () => $('fInv').click());
   $('fInv').onchange = (e) => { cargarExcel(e.target.files[0]); e.target.value = ''; };
-  dragDrop('zInv', (f) => cargarExcel(f));
-  $('zOrigen').onclick = () => elegirCarpeta('origen');
-  $('zDestino').onclick = () => elegirCarpeta('destino');
-  $('modos').onclick = (e) => {
-    const m = e.target.closest('.modo'); if (!m) return;
-    document.querySelectorAll('#modos .modo').forEach((x) => x.classList.remove('sel'));
-    m.classList.add('sel');
-  };
+  zonaArchivo('zOrigen', null, () => elegirCarpeta('origen'));
+  zonaArchivo('zDestino', null, () => elegirCarpeta('destino'));
+  // Navegación del asistente
+  $('btn1').onclick = () => irA(2);
+  $('btn2Atras').onclick = () => irA(1);
+  $('btn2').onclick = () => { mostrarConfirmacion(); irA(3); };
+  $('btn3Atras').onclick = () => irA(2);
+  $('btnVolverOrg').onclick = () => irA(3);
   $('btnSimular').onclick = () => correr(true);
   $('btnEjecutar').onclick = () => correr(false);
   $('btnEjecutarBarra').onclick = () => correr(false);
   $('selGrafico').onchange = () => pintarPanel(S.dimActiva);
+  $('dimTabs').onclick = (e) => { const b = e.target.closest('.dtab'); if (b) cambiarDim(b.dataset.dim, b); };
   // Descargas
+  menu('btnDescargas', 'menuDescargas');
   $('btnResumenDim').onclick = descargarResumenDim;
   $('btnAnalisisXls').onclick = descargarAnalisisExcel;
   $('btnAnalisisPdf').onclick = descargarAnalisisPDF;
@@ -177,26 +171,18 @@ function iniciarOrganizador() {
   $('btnCatalogoPpt').onclick = catalogoPPT;
 }
 
-function dragDrop(id, cb) {
-  const z = $(id);
-  z.addEventListener('dragover', (e) => { e.preventDefault(); z.classList.add('drag'); });
-  z.addEventListener('dragleave', () => z.classList.remove('drag'));
-  z.addEventListener('drop', (e) => {
-    e.preventDefault(); z.classList.remove('drag');
-    const f = e.dataTransfer.files[0]; if (f) cb(f);
-  });
-}
-
 function irA(paso) {
   [1, 2, 3, 4].forEach((n) => {
     $(`p${n}`).classList.toggle('visible', n === paso);
     const ws = $(`ws${n}`); ws.classList.remove('activo', 'listo');
-    if (n === paso) ws.classList.add('activo'); else if (n < paso) ws.classList.add('listo');
+    ws.removeAttribute('aria-current');
+    if (n === paso) { ws.classList.add('activo'); ws.setAttribute('aria-current', 'step'); } else if (n < paso) ws.classList.add('listo');
     if (n < 4) $(`wl${n}`).classList.toggle('ok', n < paso);
   });
+  // La barra de "Ejecutar" solo acompaña a los resultados de una simulación.
+  $('barraFija').style.display = paso === 4 && S.simulado && !S.ejecutado ? 'block' : 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-window.irA = irA;
 
 // ── Paso 1: cargar Excel y detectar columnas ────────────────
 async function cargarExcel(archivo) {
@@ -205,7 +191,10 @@ async function cargarExcel(archivo) {
     const { headers: enc, registros } = leerTabla(await archivo.arrayBuffer(), (h) => puntuarHoja(h, CAMPOS_ORG));
     const detectadas = detectarColsOrg(enc);
     const colCodigo = detectadas.codigo || '';
-    if (!colCodigo) { alert('No encontré la columna de código del activo en el Excel.'); return; }
+    if (!colCodigo) {
+      toast('No se encontró la columna de código del activo (por ejemplo "Barra nueva", "Código de barras" o "CodBar").', 'error', { titulo: 'Excel sin columna de código' });
+      return;
+    }
 
     const cols = { codigo: colCodigo, descripcion: detectadas.descripcion || null };
     DIMS.forEach((d) => { cols[d.v] = detectadas[d.v] || null; });
@@ -214,19 +203,17 @@ async function cargarExcel(archivo) {
     S.inv = { registros, nombre: archivo.name.replace(/\.[^.]+$/, ''), cols };
     invalidarSimulacion();
 
-    const z = $('zInv');
-    z.classList.add('ok');
-    z.querySelector('.ic').textContent = '✅';
-    z.querySelector('.zt').textContent = archivo.name;
-    z.querySelector('.zs').textContent = `${num(registros.length)} activos`;
-    $('inv-info').style.display = 'block';
+    zonaLista('zInv', archivo.name, `${num(registros.length)} registros · haga clic para cambiar de archivo`);
+    $('inv-info').hidden = false;
 
     const tags = [`<span class="tag">Código: <b>${esc(colCodigo)}</b></span>`]
-      .concat(DIMS.map((d) => `<span class="tag">${d.l}: <b>${cols[d.v] ? esc(cols[d.v]) : '—'}</b></span>`));
+      .concat(DIMS.map((d) => (cols[d.v]
+        ? `<span class="tag">${d.l}: <b>${esc(cols[d.v])}</b></span>`
+        : `<span class="tag vacio">${d.l}: no está en el Excel</span>`)));
     $('inv-resumen').innerHTML = tags.join(' ');
     $('btn1').disabled = false;
   } catch (e) {
-    alert('Error leyendo el archivo: ' + e.message);
+    toast(e.message, 'error', { titulo: 'No se pudo leer el archivo' });
   }
 }
 
@@ -238,40 +225,48 @@ async function elegirCarpeta(cual) {
     invalidarSimulacion();
     let noVacia = false;
     if (cual === 'destino') { for await (const _ of handle.values()) { noVacia = true; break; } }
-    S.destinoNoVacio = noVacia;
-    const z = $(cual === 'origen' ? 'zOrigen' : 'zDestino');
-    z.classList.add('ok');
-    z.querySelector('.ic').textContent = '✅';
-    z.querySelector('.zt').textContent = handle.name;
-    z.querySelector('.zs').textContent = noVacia
-      ? 'Atención: la carpeta no está vacía; los archivos con el mismo nombre se reemplazarán'
-      : 'Seleccionada';
+    if (cual === 'destino') S.destinoNoVacio = noVacia;
+    if (cual === 'destino' && noVacia) {
+      zonaLista('zDestino', handle.name, 'La carpeta no está vacía: los archivos con el mismo nombre se reemplazarán', true);
+    } else {
+      zonaLista(cual === 'origen' ? 'zOrigen' : 'zDestino', handle.name, 'Seleccionada · haga clic para cambiarla');
+    }
     $('btn2').disabled = !(S.origen && S.destino);
   } catch (e) {
-    if (e.name !== 'AbortError') alert('No se pudo abrir la carpeta: ' + e.message);
+    if (e.name !== 'AbortError') toast(e.message, 'error', { titulo: 'No se pudo abrir la carpeta' });
   }
 }
 
 function mostrarConfirmacion() {
   $('confirmGrid').innerHTML = `
     <div class="citem"><div class="cl">Inventario</div><div class="cv">${esc(S.inv.nombre)}</div></div>
-    <div class="citem"><div class="cl">Activos</div><div class="cv">${num(S.inv.registros.length)}</div></div>
+    <div class="citem"><div class="cl">Registros</div><div class="cv">${num(S.inv.registros.length)}</div></div>
     <div class="citem"><div class="cl">Origen</div><div class="cv">${esc(S.origen.name)}</div></div>
     <div class="citem"><div class="cl">Destino</div><div class="cv">${esc(S.destino.name)}</div></div>`;
 }
-window.mostrarConfirmacion = mostrarConfirmacion;
 
 // ── Paso 3: simular / ejecutar ──────────────────────────────
 async function correr(simulacion) {
-  if (!simulacion && !S.simulado) { alert('Primero corre la simulación.'); return; }
-  const modo = document.querySelector('#modos .modo.sel').dataset.v;
-  if (!simulacion &&
-      !confirm(`Se van a ${modo.toUpperCase()} las fotos hacia:\n${S.destino.name}${S.destinoNoVacio ? '\n\nLa carpeta destino no está vacía: los archivos con el mismo nombre se reemplazarán.' : ''}\n\n¿Continuar?`)) return;
+  if (!simulacion && !S.simulado) { toast('Primero corra la simulación para revisar el resultado.', 'warn'); return; }
+  const modo = document.querySelector('#modos input:checked').value;
+  if (!simulacion) {
+    const ok = await confirmar({
+      titulo: `¿${modo === 'mover' ? 'Mover' : 'Copiar'} las fotos ahora?`,
+      texto: `Se van a ${modo === 'mover' ? 'MOVER' : 'COPIAR'} las fotos hacia la carpeta "${S.destino.name}".`
+        + (S.destinoNoVacio ? '\n\nLa carpeta destino no está vacía: los archivos con el mismo nombre se reemplazarán.' : '')
+        + (modo === 'mover' ? '\n\nAl mover, las fotos dejan de estar en la carpeta de origen.' : ''),
+      aceptar: modo === 'mover' ? 'Mover fotos' : 'Copiar fotos',
+      peligro: modo === 'mover' || S.destinoNoVacio,
+    });
+    if (!ok) return;
+  }
 
   bloquear(true);
   $('progWrap').style.display = 'block';   // visible ANTES de setProg (fix barra)
-  $('logbox').style.display = 'block';
-  $('completado').style.display = 'none';
+  $('progWrap').classList.add('activo');
+  $('logDet').hidden = false;
+  irA(3);   // el progreso se ve en el paso 3 (también al ejecutar desde la barra inferior)
+  $('barraFija').style.display = 'none';
   S.tiempoInicio = Date.now();
 
   const timer = setInterval(() => {
@@ -323,35 +318,39 @@ async function correr(simulacion) {
       await guardarEnDestino(S.destino, 'Informe_Cobertura.pdf', S.blobPDF);
       log('Reportes guardados en la carpeta destino.');
     }
-    setProg(1, simulacion ? 'Simulación completada.' : '¡Proceso completado!');
+    setProg(1, simulacion ? 'Simulación completada.' : 'Proceso completado.');
     S.simulado = S.simulado || simulacion;
+    S.ejecutado = !simulacion;
 
     const m = calcularMetricas(S.plan);
     const seg = Math.floor((Date.now() - S.tiempoInicio) / 1000);
-    const tStr = seg >= 60 ? `${Math.floor(seg / 60)} min ${seg % 60} seg` : `${seg} seg`;
+    const tStr = seg >= 60 ? `${Math.floor(seg / 60)} min ${seg % 60} s` : `${seg} s`;
 
-    if (!simulacion) {
-      $('completado').style.display = 'flex';
-      $('completado-msg').innerHTML = `✅ <b>${num(m.emparejadas)} fotos organizadas</b> en ${tStr}`;
+    if (simulacion) {
+      $('bannerRes').innerHTML = `<div class="banner info">
+        <div class="b-ic">${icono('ojo')}</div>
+        <div class="b-txt"><b>Vista previa de la simulación</b>Así quedará la organización: ${num(m.emparejadas)} fotos emparejadas y ${pct(m.cobertura)} de cobertura. Todavía no se ha copiado ni movido ningún archivo.</div>
+        <button class="b-pri" id="btnEjecutarBanner">${icono('rayo')}Ejecutar ahora</button></div>`;
+      $('btnEjecutarBanner').onclick = () => correr(false);
+      $('bfResumen').textContent = `${num(m.emparejadas)} fotos listas · ${pct(m.cobertura)} de cobertura`;
+      $('btnEjecutar').disabled = false;
+    } else {
+      $('bannerRes').innerHTML = `<div class="banner exito">
+        <div class="b-ic">${icono('ok')}</div>
+        <div class="b-txt"><b>${num(m.emparejadas)} fotos organizadas en ${tStr}</b>Las carpetas y los reportes (Conciliacion.xlsx e Informe_Cobertura.pdf) quedaron guardados en "${esc(S.destino.name)}".</div></div>`;
       sonido();
+      toast(`${num(m.emparejadas)} fotos organizadas en ${tStr}.`, 'ok', { titulo: 'Proceso completado' });
     }
 
     pintarDashboard(cfg, m);
     irA(4);
-
-    if (simulacion) {
-      $('bfResumen').textContent = `${num(m.emparejadas)} fotos listas · ${pct(m.cobertura)} de cobertura`;
-      $('barraFija').style.display = 'block';
-      $('btnEjecutar').disabled = false;
-    } else {
-      $('barraFija').style.display = 'none';
-    }
   } catch (e) {
     log('ERROR: ' + e.message);
-    alert('Error:\n' + e.message);
+    toast(e.message, 'error', { titulo: simulacion ? 'La simulación no pudo completarse' : 'La ejecución no pudo completarse' });
     setProg(0, 'Error.');
   } finally {
     clearInterval(timer);
+    $('progWrap').classList.remove('activo');
     bloquear(false);
   }
 }
@@ -380,7 +379,8 @@ async function generarPDFCobertura(cfg, simulacion) {
 // ════════════════════════════════════════════════════════════
 function pintarDashboard(cfg, m) {
   const cls = (v, b, med) => (v < b ? 'bad' : v < med ? 'warn' : 'ok');
-  $('tituloRes').textContent = `Dashboard · ${S.inv.nombre}`;
+  $('tituloRes').textContent = `Resultados · ${S.inv.nombre}`;
+  pintarAvisos(S.plan.alertas || []);
 
   $('kpis').innerHTML = [
     kpi('Total activos',    num(m.totalActivos)),
@@ -400,12 +400,36 @@ function pintarDashboard(cfg, m) {
   $('dimTabs').innerHTML = DIMS.map((d, i) => {
     const n = S.datosDims[d.v].length;
     const badge = `<span class="badge${n ? '' : ' empty'}">${n}</span>`;
-    return `<button class="dtab${i === 0 ? ' activo' : ''}" data-dim="${d.v}" onclick="cambiarDim('${d.v}',this)">${d.l}${badge}</button>`;
+    return `<button class="dtab${i === 0 ? ' activo' : ''}" role="tab" aria-selected="${i === 0}" data-dim="${d.v}">${d.l}${badge}</button>`;
   }).join('');
 
   // Dona global de cobertura: fija, se dibuja una sola vez.
   pintarDonaCobertura(m);
   pintarPanel('familia');
+}
+
+/** Alertas del motor (duplicados, claves ambiguas…) agrupadas por tipo, con ejemplos. */
+const TEXTO_ALERTA = {
+  'Codigo duplicado en el inventario': 'Códigos duplicados en el inventario',
+  'Codigo repetido (se usa el primero)': 'Códigos repetidos: se usa el primer registro',
+  'Clave flexible ambigua (solo match exacto)': 'Códigos parecidos entre sí: solo se emparejan por coincidencia exacta',
+  'Catalogo duplicado con familias distintas': 'Catálogo duplicado con familias distintas',
+  'Enlace de catalogo no encontrado': 'Enlace de catálogo no encontrado',
+};
+function pintarAvisos(alertas) {
+  if (!alertas.length) { $('avisos').innerHTML = ''; return; }
+  const grupos = new Map();
+  for (const [tipo, det] of alertas) {
+    if (!grupos.has(tipo)) grupos.set(tipo, []);
+    grupos.get(tipo).push(det);
+  }
+  $('avisos').innerHTML = [...grupos.entries()].map(([tipo, dets]) => `
+    <div class="aviso warn">${icono('alerta')}<div>
+      <b>${esc(TEXTO_ALERTA[tipo] || tipo)}: ${num(dets.length)}</b>
+      <details><summary>Ver ${dets.length > 8 ? 'los primeros 8' : 'detalle'}</summary>
+        <ul>${dets.slice(0, 8).map((d) => `<li>${esc(Array.isArray(d) ? d.join(', ') : d)}</li>`).join('')}</ul>
+      </details>
+    </div></div>`).join('');
 }
 
 /** Agrupa los activos por el valor de una columna del inventario. */
@@ -440,6 +464,7 @@ function pintarPanel(dim) {
   const tipo = $('selGrafico').value || 'barrasH';
   $('thDim').textContent = label;
   $('gPrincipalTit').textContent = `Activos por ${label.toLowerCase()}`;
+  $('menuDimTxt').textContent = `Solo la dimensión activa: ${label}`;
 
   // Si la dimensión no está en el inventario, el gráfico se muestra EN CERO
   // (mismo formato que las demás, sin datos), no un mensaje.
@@ -449,11 +474,11 @@ function pintarPanel(dim) {
 }
 
 function cambiarDim(dim, btn) {
-  document.querySelectorAll('.dtab').forEach((b) => b.classList.remove('activo'));
+  document.querySelectorAll('#dimTabs .dtab').forEach((b) => { b.classList.remove('activo'); b.setAttribute('aria-selected', 'false'); });
   btn.classList.add('activo');
+  btn.setAttribute('aria-selected', 'true');
   pintarPanel(dim);
 }
-window.cambiarDim = cambiarDim;
 
 // ── Gráficos (todos responsive:false → sin scroll infinito) ─
 const fondoBlanco = {
@@ -596,7 +621,7 @@ async function descargarResumenDim() {
   const dim = S.dimActiva;
   const label = DIMS.find((d) => d.v === dim)?.l || dim;
   const datos = S.datosDims[dim] || [];
-  if (!datos.length) { alert(`La dimensión "${label}" no tiene datos para exportar.`); return; }
+  if (!datos.length) { toast(`La dimensión "${label}" no está en este inventario: no hay datos para exportar.`, 'warn'); return; }
   const wb = new ExcelJS.Workbook();
   hojaDim(wb, label, datos);
   await bajarWb(wb, `Resumen_${label}_${S.inv.nombre}.xlsx`);
@@ -604,7 +629,7 @@ async function descargarResumenDim() {
 
 /** Excel con TODAS las dimensiones + hoja resumen. */
 async function descargarAnalisisExcel() {
-  if (!S.plan) { alert('Primero corre la simulación.'); return; }
+  if (!S.plan) { toast('Primero corra la simulación.', 'warn'); return; }
   const m = calcularMetricas(S.plan);
   const wb = new ExcelJS.Workbook();
   wb.creator = 'NEXOVA Suite';
@@ -672,7 +697,7 @@ async function bajarWb(wb, nombre) {
 
 /** PDF del análisis por dimensiones: gráficos + cuadros resumen. */
 async function descargarAnalisisPDF() {
-  if (!S.plan) { alert('Primero corre la simulación.'); return; }
+  if (!S.plan) { toast('Primero corra la simulación.', 'warn'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const M = 16, W = 210;
@@ -818,6 +843,8 @@ const ETIQ_TIPO = { etiqueta: 'Etiqueta', datos: 'Placa de datos', 'probable-eti
 function catModal(abrir) {
   $('catModal').hidden = !abrir;
   document.body.style.overflow = abrir ? 'hidden' : '';
+  if (abrir) setTimeout(() => $('catCerrar').focus(), 0);
+  else $('btnCatalogoPpt').focus();
 }
 function catProgreso(txt, h, t) {
   $('catProg').hidden = false;
@@ -826,8 +853,8 @@ function catProgreso(txt, h, t) {
 }
 
 async function catalogoPPT() {
-  if (!S.plan) { alert('Primero corra la simulación.'); return; }
-  if (!calcularMetricas(S.plan).emparejadas) { alert('No hay fotos emparejadas para el catálogo.'); return; }
+  if (!S.plan) { toast('Primero corra la simulación.', 'warn'); return; }
+  if (!calcularMetricas(S.plan).emparejadas) { toast('No hay fotos emparejadas para el catálogo.', 'warn'); return; }
   if (CAT.ocupado) return;
   // Enlaces del modal (una sola vez)
   if (!catModal.listo) {
@@ -862,7 +889,7 @@ async function catalogoPPT() {
     CAT.analisis = await analizarCatalogo(S.plan, (h, t) => catProgreso('Analizando', h, t));
   } catch (e) {
     CAT.ocupado = false; catModal(false);
-    alert('No se pudo analizar las fotos:\n' + e.message); return;
+    toast(e.message, 'error', { titulo: 'No se pudieron analizar las fotos' }); return;
   }
   CAT.ocupado = false;
   $('catProg').hidden = true;
@@ -932,14 +959,15 @@ async function catGenerar() {
       const cod = celdaATexto(r[cl.codigo]);
       if (cod && !extras.has(cod)) extras.set(cod, { marca: val(r, 'marca'), modelo: val(r, 'modelo'), serie: val(r, 'serie'), estado: val(r, 'estado'), ubicacion: val(r, 'area') || val(r, 'sede') });
     }
-    await generarCatalogoPPT(S.plan, S.inv.nombre, (h, t) => catProgreso('Armando el PowerPoint', h, t),
+    const partes = await generarCatalogoPPT(S.plan, S.inv.nombre, (h, t) => catProgreso('Armando el PowerPoint', h, t),
       { extras, seleccion: CAT.analisis.seleccion });
     $('catProgTxt').textContent = 'Catálogo generado y descargado.';
+    toast(partes > 1 ? `Por su tamaño, el catálogo se dividió en ${partes} archivos.` : 'El catálogo se descargó correctamente.', 'ok', { titulo: 'Catálogo PPT listo' });
     setTimeout(() => { CAT.ocupado = false; catModal(false); }, 900);
   } catch (e) {
     CAT.ocupado = false;
     $('catGenerar').disabled = false;
-    alert('Error generando el catálogo PPT:\n' + e.message);
+    toast(e.message, 'error', { titulo: 'No se pudo generar el catálogo PPT' });
   }
 }
 
@@ -947,9 +975,10 @@ async function catGenerar() {
 function invalidarSimulacion() {
   S.plan = null; S.simulado = false; S.blobExcel = null; S.blobPDF = null;
   CAT.analisis = null;
+  S.ejecutado = false;
   const bf = $('barraFija'); if (bf) bf.style.display = 'none';
   const be = $('btnEjecutar'); if (be) be.disabled = true;
-  const co = $('completado'); if (co) co.style.display = 'none';
+  const br = $('bannerRes'); if (br) br.innerHTML = '';
 }
 
 // ── Utilidades ──────────────────────────────────────────────
@@ -970,7 +999,9 @@ function sonido() {
 function bloquear(b) {
   $('btnSimular').disabled = b;
   $('btnEjecutar').disabled = b || !S.simulado;
-  $('btnEjecutarBarra').disabled = b;
+  $('btnEjecutarBarra').disabled = b || !S.simulado;
+  const bb = $('btnEjecutarBanner'); if (bb) bb.disabled = b;
+  $('btnSimular').innerHTML = b ? `${icono('reiniciar')}Procesando…` : `${icono('ojo')}${S.simulado ? 'Volver a simular' : 'Simular primero (sin tocar archivos)'}`;
 }
 function setProg(f, txt) {
   const fill = $('progFill'); if (fill) fill.style.width = `${Math.min(100, f * 100).toFixed(0)}%`;
@@ -980,10 +1011,4 @@ function log(t) {
   const el = $('logbox'); if (!el) return;
   el.textContent += new Date().toLocaleTimeString('es-PE') + '  ' + t + '\n';
   el.scrollTop = el.scrollHeight;
-}
-function descargar(blob, nombre) {
-  if (!blob) { alert('Aún no hay nada que descargar. Corre la simulación primero.'); return; }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = nombre; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
